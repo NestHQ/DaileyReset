@@ -167,14 +167,6 @@
         padding: 16px;
       }
 
-      .locked {
-        margin: 12px 0 0;
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid var(--line);
-        color: var(--muted);
-        background: #fafbff;
-      }
     </style>
   </head>
   <body>
@@ -194,10 +186,6 @@
           <p>Higher streaks unlock bigger prizes.</p>
         </section>
 
-        <div class="locked" id="lockedMessage" hidden>
-          Leaderboard is a Pro feature. Upgrade to Pro or Team to unlock global rankings.
-        </div>
-
         <div class="table-wrap">
           <table>
             <thead>
@@ -205,7 +193,6 @@
                 <th>Rank</th>
                 <th>User</th>
                 <th>Streak</th>
-                <th>Total Sessions</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody"></tbody>
@@ -219,115 +206,84 @@
         </div>
       </section>
     </main>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase =
-        window.supabase && typeof window.supabase.createClient === 'function'
-          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-          : null;
-    </script>
-    <script>
-      (async () => {
-        const STATS_KEY = 'daily-reset-user-stats';
+      (() => {
+        const USERS_KEY = 'users';
         const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
         const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
-        const isSupabaseConfigured = () =>
-          Boolean(supabase) &&
-          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
-          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
-          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
+        const getSafe = (key) => {
+          try {
+            return localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        };
+        const setSafe = (key, value) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch {}
+        };
+        const removeSafe = (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        };
 
-        let email = '';
-        let userId = null;
-        let supabaseMode = isSupabaseConfigured();
-        if (supabaseMode) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (!session) {
-            window.location.href = '/';
-            return;
-          }
-          email = session.user?.email || 'user@example.com';
-          userId = session.user?.id || null;
-        } else {
-          const localEmail = localStorage.getItem(LOCAL_SESSION_KEY);
-          if (!localEmail) {
-            window.location.href = 'index.html';
-            return;
-          }
-          email = localEmail;
+        if (!getSafe(USERS_KEY)) {
+          setSafe(USERS_KEY, JSON.stringify([]));
         }
 
-        let stats = {};
+        let users = [];
         try {
-          const parsed = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
-          stats = parsed && typeof parsed === 'object' ? parsed : {};
+          const parsed = JSON.parse(getSafe(USERS_KEY) || '[]');
+          users = Array.isArray(parsed) ? parsed : [];
         } catch {
-          stats = {};
+          users = [];
+          setSafe(USERS_KEY, JSON.stringify([]));
         }
+
+        const currentEmail = (getSafe(LOCAL_SESSION_KEY) || '').toLowerCase();
         const bodyEl = document.getElementById('leaderboardBody');
         const userLabelEl = document.getElementById('userLabel');
         const flashEl = document.getElementById('flashMessage');
-        const lockedMessageEl = document.getElementById('lockedMessage');
-        const tableWrapEl = document.querySelector('.table-wrap');
         const startSessionBtn = document.getElementById('startSessionBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        userLabelEl.textContent = `Signed in as ${email}`;
+        userLabelEl.textContent = currentEmail ? `Signed in as ${currentEmail}` : 'Signed in as guest';
 
-        const flash = localStorage.getItem(LEADERBOARD_FLASH_KEY);
+        const flash = getSafe(LEADERBOARD_FLASH_KEY);
         if (flash) {
           flashEl.textContent = flash;
           flashEl.classList.add('show');
-          localStorage.removeItem(LEADERBOARD_FLASH_KEY);
+          removeSafe(LEADERBOARD_FLASH_KEY);
         }
 
-        let subscriptionType = 'free';
-        if (supabaseMode && userId) {
-          try {
-            const { data: subscriptionData } = await supabase
-              .from('user_subscriptions')
-              .select('subscription_type')
-              .eq('user_id', userId)
-              .maybeSingle();
-            subscriptionType = subscriptionData?.subscription_type || 'free';
-          } catch {
-            subscriptionType = 'free';
-          }
-        }
-        const hasProAccess = !supabaseMode || subscriptionType === 'pro' || subscriptionType === 'team';
+        const maskEmail = (email) => {
+          if (!email || !email.includes('@')) return 'Anonymous';
+          const [name, domain] = email.split('@');
+          const safeName = name.length <= 2 ? `${name[0] || '*'}*` : `${name[0]}${'*'.repeat(Math.min(name.length - 2, 4))}${name[name.length - 1]}`;
+          return `${safeName}@${domain}`;
+        };
 
-        if (!hasProAccess) {
-          lockedMessageEl.hidden = false;
-          tableWrapEl.hidden = true;
-        }
-
-        const allUsers = Array.from(new Set([...Object.keys(stats), email]))
-          .map((userEmail) => ({
-            email: userEmail,
-            streak: stats[userEmail]?.streak || 0,
-            totalSessions: stats[userEmail]?.totalSessions || 0,
+        const rankedUsers = users
+          .map((user) => ({
+            email: (user.email || '').toLowerCase(),
+            streak: Number.isFinite(Number(user.streak)) ? Number(user.streak) : 0,
           }))
-          .sort((a, b) => b.streak - a.streak || b.totalSessions - a.totalSessions || a.email.localeCompare(b.email));
+          .filter((user) => user.email)
+          .sort((a, b) => b.streak - a.streak || a.email.localeCompare(b.email));
 
-        if (!hasProAccess) {
-          bodyEl.innerHTML = '';
-        } else if (allUsers.length === 0) {
-          bodyEl.innerHTML = '<tr><td class="empty" colspan="4">No leaderboard data yet.</td></tr>';
+        if (rankedUsers.length === 0) {
+          bodyEl.innerHTML = '<tr><td class="empty" colspan="3">No sessions completed yet.</td></tr>';
         } else {
-          bodyEl.innerHTML = allUsers
+          bodyEl.innerHTML = rankedUsers
             .map((user, index) => {
-              const isYou = user.email === email;
+              const isYou = currentEmail && user.email === currentEmail;
               return `
                 <tr class="${isYou ? 'you-row' : ''}">
                   <td>#${index + 1}</td>
-                  <td>${user.email}${isYou ? '<span class="badge">You</span>' : ''}</td>
+                  <td>${maskEmail(user.email)}${isYou ? '<span class="badge">You</span>' : ''}</td>
                   <td>🔥 ${user.streak}</td>
-                  <td>${user.totalSessions}</td>
                 </tr>
               `;
             })
@@ -335,23 +291,14 @@
         }
 
         logoutBtn.addEventListener('click', () => {
-          logout();
+          removeSafe(LOCAL_SESSION_KEY);
+          window.location.href = 'index.html';
         });
 
         startSessionBtn.addEventListener('click', () => {
-          localStorage.removeItem(`daily-reset-timer-state-${email}`);
+          removeSafe(`daily-reset-timer-state-${currentEmail || 'local-user'}`);
           window.location.href = 'timer.html';
         });
-
-        async function logout() {
-          if (supabaseMode) {
-            await supabase.auth.signOut();
-            window.location.href = '/';
-            return;
-          }
-          localStorage.removeItem(LOCAL_SESSION_KEY);
-          window.location.href = 'index.html';
-        }
       })();
     </script>
   </body>
