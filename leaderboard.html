@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Reset | Leaderboard</title>
+    <style>
+      :root {
+        --bg: #f3f5f9;
+        --surface: #ffffff;
+        --line: #d9e1ef;
+        --text: #172235;
+        --muted: #607089;
+        --primary: #2d62f2;
+        --success: #0f9d74;
+        --radius: 16px;
+        --shadow: 0 14px 34px rgba(20, 40, 85, 0.11);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 10% 0%, #ebf1ff 0%, transparent 35%),
+          radial-gradient(circle at 90% 20%, #ecfbf7 0%, transparent 30%), var(--bg);
+      }
+
+      .container {
+        width: min(760px, calc(100% - 28px));
+        margin: 30px auto;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        padding: 22px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .brand {
+        font-weight: 800;
+      }
+
+      .flash {
+        margin: 12px 0 16px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid #bce8d7;
+        background: #eaf9f3;
+        color: #0b6d4f;
+        display: none;
+      }
+
+      .flash.show {
+        display: block;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        background: #f7f9ff;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      .you-row {
+        background: #f0f6ff;
+        font-weight: 700;
+      }
+
+      .badge {
+        display: inline-block;
+        margin-left: 8px;
+        font-size: 0.74rem;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid #b8cdfa;
+        color: var(--primary);
+        background: #e9f1ff;
+        vertical-align: middle;
+      }
+
+      .sub {
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+
+      .actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--text);
+        padding: 10px 12px;
+        text-decoration: none;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: transparent;
+      }
+
+      .btn:hover {
+        filter: brightness(0.98);
+      }
+
+      .empty {
+        color: var(--muted);
+        text-align: center;
+        padding: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="panel">
+        <div class="topbar">
+          <div>
+            <div class="brand">Daily Reset Leaderboard</div>
+            <p class="sub" id="userLabel"></p>
+          </div>
+        </div>
+
+        <div class="flash" id="flashMessage"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th>Streak</th>
+                <th>Total Sessions</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" type="button" id="startSessionBtn">Start New Session</button>
+          <a class="btn" href="index.html">Back to Home</a>
+          <button class="btn" type="button" id="logoutBtn">Logout</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const USERS_KEY = 'daily-reset-users';
+        const SESSION_KEY = 'daily-reset-session';
+        const STATS_KEY = 'daily-reset-user-stats';
+        const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
+
+        const email = localStorage.getItem(SESSION_KEY);
+        if (!email) {
+          window.location.href = 'index.html';
+          return;
+        }
+
+        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+        if (!users[email]) {
+          localStorage.removeItem(SESSION_KEY);
+          window.location.href = 'index.html';
+          return;
+        }
+
+        const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        const bodyEl = document.getElementById('leaderboardBody');
+        const userLabelEl = document.getElementById('userLabel');
+        const flashEl = document.getElementById('flashMessage');
+        const startSessionBtn = document.getElementById('startSessionBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        userLabelEl.textContent = `Signed in as ${email}`;
+
+        const flash = localStorage.getItem(LEADERBOARD_FLASH_KEY);
+        if (flash) {
+          flashEl.textContent = flash;
+          flashEl.classList.add('show');
+          localStorage.removeItem(LEADERBOARD_FLASH_KEY);
+        }
+
+        const allUsers = Object.keys(users)
+          .map((userEmail) => ({
+            email: userEmail,
+            streak: stats[userEmail]?.streak || 0,
+            totalSessions: stats[userEmail]?.totalSessions || 0,
+          }))
+          .sort((a, b) => b.streak - a.streak || b.totalSessions - a.totalSessions || a.email.localeCompare(b.email));
+
+        if (allUsers.length === 0) {
+          bodyEl.innerHTML = '<tr><td class="empty" colspan="4">No leaderboard data yet.</td></tr>';
+        } else {
+          bodyEl.innerHTML = allUsers
+            .map((user, index) => {
+              const isYou = user.email === email;
+              return `
+                <tr class="${isYou ? 'you-row' : ''}">
+                  <td>#${index + 1}</td>
+                  <td>${user.email}${isYou ? '<span class="badge">You</span>' : ''}</td>
+                  <td>🔥 ${user.streak}</td>
+                  <td>${user.totalSessions}</td>
+                </tr>
+              `;
+            })
+            .join('');
+        }
+
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem(SESSION_KEY);
+          window.location.href = 'index.html';
+        });
+
+        startSessionBtn.addEventListener('click', () => {
+          localStorage.removeItem(`daily-reset-timer-state-${email}`);
+          window.location.href = 'timer.html';
+        });
+      })();
+    </script>
+  </body>
+</html>
