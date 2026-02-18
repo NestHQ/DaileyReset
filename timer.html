@@ -361,7 +361,10 @@
     <script>
       const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
       const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === 'function'
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
     </script>
     <script>
       (async () => {
@@ -397,6 +400,7 @@
         ];
 
         const isSupabaseConfigured = () =>
+          Boolean(supabase) &&
           Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
           !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
           SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
@@ -761,10 +765,12 @@
             window.location.href = 'leaderboard.html';
           }, 550);
         });
+        window.__dailyResetSaveBound = true;
 
         startBtn.addEventListener('click', startTimer);
         pauseBtn.addEventListener('click', pauseTimer);
         resetBtn.addEventListener('click', resetTimer);
+        window.__dailyResetTimerBound = true;
 
         logoutBtn.addEventListener('click', () => {
           logout();
@@ -789,6 +795,203 @@
           phaseLabelEl.textContent = `${phaseLabelEl.textContent} · Free`;
         }
         restoreTimerState();
+      })();
+    </script>
+    <script>
+      (() => {
+        if (window.__dailyResetTimerBound && window.__dailyResetSaveBound) return;
+
+        const TIMER_DURATION_MS = 3 * 60 * 1000;
+        const email = localStorage.getItem('daily-reset-local-session-email') || 'local-user';
+        const timerStateKey = `daily-reset-timer-state-${email}`;
+        const ENTRIES_KEY = 'daily-reset-entries';
+        const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
+
+        const timerDisplayEl = document.getElementById('timerDisplay');
+        const sessionStatusEl = document.getElementById('sessionStatus');
+        const timerRingEl = document.getElementById('timerRing');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveStatusEl = document.getElementById('saveStatus');
+        const reflectionEl = document.getElementById('reflectionInput');
+        const intentionEl = document.getElementById('intentionInput');
+
+        if (!timerDisplayEl || !sessionStatusEl || !startBtn || !pauseBtn || !resetBtn || !saveBtn) return;
+
+        let isRunning = false;
+        let remainingTime = TIMER_DURATION_MS;
+        let intervalId = null;
+        let startedAt = null;
+        let startRemaining = TIMER_DURATION_MS;
+        let isComplete = false;
+
+        const format = (ms) => {
+          const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        };
+
+        const persist = () => {
+          try {
+            localStorage.setItem(
+              timerStateKey,
+              JSON.stringify({ isRunning, remainingTime, startedAt, startRemaining, isComplete })
+            );
+          } catch {}
+        };
+
+        const load = () => {
+          try {
+            return JSON.parse(localStorage.getItem(timerStateKey) || 'null');
+          } catch {
+            return null;
+          }
+        };
+
+        const updateButtons = () => {
+          startBtn.disabled = isRunning || remainingTime <= 0;
+          pauseBtn.disabled = !isRunning;
+        };
+
+        const updateDisplay = () => {
+          timerDisplayEl.textContent = format(remainingTime);
+          if (timerRingEl) {
+            const pct = Math.max(0, Math.min(100, (remainingTime / TIMER_DURATION_MS) * 100));
+            timerRingEl.style.setProperty('--progress', String(pct));
+          }
+          if (isComplete) {
+            sessionStatusEl.textContent = 'Session Complete';
+            sessionStatusEl.classList.add('complete');
+          } else if (isRunning) {
+            sessionStatusEl.textContent = 'Session in progress...';
+            sessionStatusEl.classList.remove('complete');
+          } else {
+            sessionStatusEl.textContent = 'Press Start to begin.';
+            sessionStatusEl.classList.remove('complete');
+          }
+          updateButtons();
+        };
+
+        const clearTick = () => {
+          if (intervalId !== null) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+        };
+
+        const complete = () => {
+          clearTick();
+          isRunning = false;
+          isComplete = true;
+          remainingTime = 0;
+          startedAt = null;
+          updateDisplay();
+          persist();
+        };
+
+        const tick = () => {
+          if (!isRunning) return;
+          const elapsed = Date.now() - startedAt;
+          remainingTime = Math.max(0, startRemaining - elapsed);
+          if (remainingTime <= 0) {
+            complete();
+            return;
+          }
+          updateDisplay();
+          persist();
+        };
+
+        const start = () => {
+          if (isRunning || remainingTime <= 0) return;
+          isRunning = true;
+          isComplete = false;
+          startedAt = Date.now();
+          startRemaining = remainingTime;
+          clearTick();
+          intervalId = setInterval(tick, 250);
+          updateDisplay();
+          persist();
+        };
+
+        const pause = () => {
+          if (!isRunning) return;
+          tick();
+          isRunning = false;
+          startedAt = null;
+          clearTick();
+          updateDisplay();
+          persist();
+        };
+
+        const reset = () => {
+          clearTick();
+          isRunning = false;
+          isComplete = false;
+          remainingTime = TIMER_DURATION_MS;
+          startedAt = null;
+          startRemaining = TIMER_DURATION_MS;
+          try {
+            localStorage.removeItem(timerStateKey);
+          } catch {}
+          saveStatusEl.textContent = '';
+          saveStatusEl.className = 'save-status';
+          updateDisplay();
+        };
+
+        const saved = load();
+        if (saved) {
+          remainingTime = typeof saved.remainingTime === 'number' ? Math.max(0, Math.min(TIMER_DURATION_MS, saved.remainingTime)) : TIMER_DURATION_MS;
+          isComplete = Boolean(saved.isComplete) || remainingTime <= 0;
+          if (saved.isRunning && typeof saved.startedAt === 'number' && remainingTime > 0) {
+            const elapsed = Date.now() - saved.startedAt;
+            remainingTime = Math.max(0, remainingTime - elapsed);
+            if (remainingTime <= 0) {
+              complete();
+            } else {
+              start();
+            }
+          } else {
+            isRunning = false;
+            updateDisplay();
+          }
+        } else {
+          updateDisplay();
+        }
+
+        startBtn.onclick = start;
+        pauseBtn.onclick = pause;
+        resetBtn.onclick = reset;
+        saveBtn.onclick = () => {
+          saveStatusEl.className = 'save-status';
+          if (!isComplete) {
+            saveStatusEl.textContent = 'Finish the timer before completing your session.';
+            saveStatusEl.classList.add('error');
+            return;
+          }
+          const reflection = reflectionEl ? reflectionEl.value.trim() : '';
+          const intention = intentionEl ? intentionEl.value.trim() : '';
+          let entries = {};
+          try {
+            entries = JSON.parse(localStorage.getItem(ENTRIES_KEY) || '{}');
+          } catch {
+            entries = {};
+          }
+          const list = Array.isArray(entries[email]) ? entries[email] : [];
+          list.unshift({ reflection, intention, createdAt: Date.now() });
+          entries[email] = list.slice(0, 50);
+          try {
+            localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
+            localStorage.setItem(LEADERBOARD_FLASH_KEY, 'Session Complete! Nice work.');
+          } catch {}
+          saveStatusEl.textContent = 'Saved. Redirecting to leaderboard...';
+          saveStatusEl.classList.add('success');
+          setTimeout(() => {
+            window.location.href = 'leaderboard.html';
+          }, 500);
+        };
       })();
     </script>
   </body>
