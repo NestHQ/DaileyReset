@@ -887,8 +887,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://hleeqjvxcpeeilzwkrtg.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_c9MiudU-yQYoqV0ohnd9BA_164j8hGP';
       const supabase =
         window.supabase && typeof window.supabase.createClient === 'function'
           ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -1066,10 +1066,7 @@
         initUsersStorage();
 
         const isSupabaseConfigured = () =>
-          Boolean(supabase) &&
-          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
-          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
-          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
+          Boolean(supabase) && Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
         const parseAuthError = (error, fallbackMessage) => {
           const raw = error && error.message ? error.message : '';

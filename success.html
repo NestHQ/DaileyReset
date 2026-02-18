@@ -78,9 +78,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://hleeqjvxcpeeilzwkrtg.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_c9MiudU-yQYoqV0ohnd9BA_164j8hGP';
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === 'function'
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
     </script>
     <script>
       (async () => {
@@ -108,9 +111,11 @@
         } else {
           titleEl.textContent = 'Pro Activated';
           messageEl.textContent = 'Your Pro access is now active.';
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.id) {
-            await upgradeUserSubscription(session.user.id, 'pro');
+          if (supabase) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) {
+              await upgradeUserSubscription(session.user.id, 'pro');
+            }
           }
         }
 

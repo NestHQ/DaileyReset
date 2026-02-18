@@ -140,9 +140,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://hleeqjvxcpeeilzwkrtg.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_c9MiudU-yQYoqV0ohnd9BA_164j8hGP';
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === 'function'
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
     </script>
     <script>
       (() => {
@@ -155,6 +158,12 @@
         const formStatusEl = document.getElementById('formStatus');
         const continueBtn = document.getElementById('continueBtn');
         const form = document.getElementById('teamSetupForm');
+
+        if (!supabase) {
+          formErrorEl.textContent = 'Unable to initialize checkout right now. Please refresh and try again.';
+          continueBtn.disabled = true;
+          return;
+        }
 
         const normalizeEmail = (email) => email.trim().toLowerCase();
         const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

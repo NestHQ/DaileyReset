@@ -187,16 +187,7 @@
         </section>
 
         <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>User</th>
-                <th>Streak</th>
-              </tr>
-            </thead>
-            <tbody id="leaderboardBody"></tbody>
-          </table>
+          <div id="leaderboard"></div>
         </div>
 
         <div class="actions">
@@ -206,99 +197,109 @@
         </div>
       </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      (() => {
-        const USERS_KEY = 'users';
-        const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
-        const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
-        const getSafe = (key) => {
-          try {
-            return localStorage.getItem(key);
-          } catch {
-            return null;
-          }
-        };
-        const setSafe = (key, value) => {
-          try {
-            localStorage.setItem(key, value);
-          } catch {}
-        };
-        const removeSafe = (key) => {
-          try {
-            localStorage.removeItem(key);
-          } catch {}
-        };
+      const supabaseUrl = "https://hleeqjvxcpeeilzwkrtg.supabase.co";
+      const supabaseKey = "sb_publishable_c9MiudU-yQYoqV0ohnd9BA_164j8hGP";
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === "function"
+          ? window.supabase.createClient(supabaseUrl, supabaseKey)
+          : null;
+    </script>
+    <script>
+      (async () => {
+        const LEADERBOARD_FLASH_KEY = "daily-reset-leaderboard-flash";
+        const LOCAL_SESSION_KEY = "daily-reset-local-session-email";
+        const leaderboardEl = document.getElementById("leaderboard");
+        const userLabelEl = document.getElementById("userLabel");
+        const flashEl = document.getElementById("flashMessage");
+        const startSessionBtn = document.getElementById("startSessionBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const currentEmail = (localStorage.getItem(LOCAL_SESSION_KEY) || "").toLowerCase();
 
-        if (!getSafe(USERS_KEY)) {
-          setSafe(USERS_KEY, JSON.stringify([]));
-        }
+        userLabelEl.textContent = currentEmail ? `Signed in as ${currentEmail}` : "Signed in as guest";
 
-        let users = [];
-        try {
-          const parsed = JSON.parse(getSafe(USERS_KEY) || '[]');
-          users = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          users = [];
-          setSafe(USERS_KEY, JSON.stringify([]));
-        }
-
-        const currentEmail = (getSafe(LOCAL_SESSION_KEY) || '').toLowerCase();
-        const bodyEl = document.getElementById('leaderboardBody');
-        const userLabelEl = document.getElementById('userLabel');
-        const flashEl = document.getElementById('flashMessage');
-        const startSessionBtn = document.getElementById('startSessionBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-
-        userLabelEl.textContent = currentEmail ? `Signed in as ${currentEmail}` : 'Signed in as guest';
-
-        const flash = getSafe(LEADERBOARD_FLASH_KEY);
+        const flash = localStorage.getItem(LEADERBOARD_FLASH_KEY);
         if (flash) {
           flashEl.textContent = flash;
-          flashEl.classList.add('show');
-          removeSafe(LEADERBOARD_FLASH_KEY);
+          flashEl.classList.add("show");
+          localStorage.removeItem(LEADERBOARD_FLASH_KEY);
         }
 
-        const maskEmail = (email) => {
-          if (!email || !email.includes('@')) return 'Anonymous';
-          const [name, domain] = email.split('@');
-          const safeName = name.length <= 2 ? `${name[0] || '*'}*` : `${name[0]}${'*'.repeat(Math.min(name.length - 2, 4))}${name[name.length - 1]}`;
-          return `${safeName}@${domain}`;
-        };
+        const safeText = (value) => String(value ?? "");
 
-        const rankedUsers = users
-          .map((user) => ({
-            email: (user.email || '').toLowerCase(),
-            streak: Number.isFinite(Number(user.streak)) ? Number(user.streak) : 0,
-          }))
-          .filter((user) => user.email)
-          .sort((a, b) => b.streak - a.streak || a.email.localeCompare(b.email));
+        async function loadLeaderboard() {
+          if (!supabase) {
+            leaderboardEl.innerHTML = '<p class="empty">Unable to load leaderboard right now.</p>';
+            return;
+          }
 
-        if (rankedUsers.length === 0) {
-          bodyEl.innerHTML = '<tr><td class="empty" colspan="3">No sessions completed yet.</td></tr>';
-        } else {
-          bodyEl.innerHTML = rankedUsers
-            .map((user, index) => {
-              const isYou = currentEmail && user.email === currentEmail;
-              return `
-                <tr class="${isYou ? 'you-row' : ''}">
-                  <td>#${index + 1}</td>
-                  <td>${maskEmail(user.email)}${isYou ? '<span class="badge">You</span>' : ''}</td>
-                  <td>🔥 ${user.streak}</td>
-                </tr>
-              `;
-            })
-            .join('');
+          const { data, error } = await supabase
+            .from("leaderboard")
+            .select("*")
+            .order("focus_score", { ascending: false });
+
+          if (error || !Array.isArray(data)) {
+            leaderboardEl.innerHTML = '<p class="empty">Unable to load leaderboard right now.</p>';
+            return;
+          }
+
+          if (data.length === 0) {
+            leaderboardEl.innerHTML = '<p class="empty">No sessions completed yet.</p>';
+            return;
+          }
+
+          leaderboardEl.innerHTML = "";
+
+          data.forEach((user, index) => {
+            const name = safeText(user.name) || safeText(user.email) || "Anonymous";
+            const resets = Number(user.resets_completed) || 0;
+            const focus = Number(user.focus_score) || 0;
+            const email = safeText(user.email).toLowerCase();
+            const isYou = currentEmail && email && currentEmail === email;
+
+            const row = document.createElement("div");
+            row.style.padding = "12px";
+            row.style.borderBottom = "1px solid var(--line)";
+            if (isYou) row.className = "you-row";
+            row.innerHTML = `
+              <strong>#${index + 1} ${name}</strong>${isYou ? '<span class="badge">You</span>' : ""} — ${resets} resets — Focus: ${focus}
+            `;
+            leaderboardEl.appendChild(row);
+          });
         }
 
-        logoutBtn.addEventListener('click', () => {
-          removeSafe(LOCAL_SESSION_KEY);
-          window.location.href = 'index.html';
+        let leaderboardChannel = null;
+        if (supabase) {
+          leaderboardChannel = supabase
+            .channel("leaderboard-changes")
+            .on(
+              "postgres_changes",
+              { event: "*", schema: "public", table: "leaderboard" },
+              () => {
+                loadLeaderboard();
+              }
+            )
+            .subscribe();
+        }
+
+        logoutBtn.addEventListener("click", () => {
+          localStorage.removeItem(LOCAL_SESSION_KEY);
+          window.location.href = "index.html";
         });
 
-        startSessionBtn.addEventListener('click', () => {
-          removeSafe(`daily-reset-timer-state-${currentEmail || 'local-user'}`);
-          window.location.href = 'timer.html';
+        startSessionBtn.addEventListener("click", () => {
+          localStorage.removeItem(`daily-reset-timer-state-${currentEmail || "local-user"}`);
+          window.location.href = "timer.html";
         });
+
+        window.addEventListener("beforeunload", () => {
+          if (leaderboardChannel) {
+            supabase.removeChannel(leaderboardChannel);
+          }
+        });
+
+        await loadLeaderboard();
       })();
     </script>
   </body>

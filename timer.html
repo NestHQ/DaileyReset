@@ -359,12 +359,88 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://hleeqjvxcpeeilzwkrtg.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_c9MiudU-yQYoqV0ohnd9BA_164j8hGP';
       const supabase =
         window.supabase && typeof window.supabase.createClient === 'function'
           ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
           : null;
+
+      window.completeReset = async function completeReset(points = 10) {
+        if (!supabase) return { ok: false, reason: 'supabase_unavailable' };
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) return { ok: false, reason: 'not_logged_in' };
+
+        const { data: existing, error: selectError } = await supabase
+          .from('leaderboard')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (selectError) return { ok: false, reason: 'select_failed' };
+        const today = new Date().toISOString().split('T')[0];
+
+        if (existing) {
+          let newStreak = Number(existing.streak) || 0;
+          if (existing.last_reset_date !== today) {
+            newStreak += 1;
+          }
+
+          const { error: updateError } = await supabase
+            .from('leaderboard')
+            .update({
+              resets_completed: (existing.resets_completed || 0) + 1,
+              focus_score: (existing.focus_score || 0) + points,
+              streak: newStreak,
+              last_reset_date: today,
+            })
+            .eq('user_id', user.id);
+          if (updateError) return { ok: false, reason: 'update_failed' };
+        } else {
+          const { error: insertError } = await supabase.from('leaderboard').insert({
+            user_id: user.id,
+            name: user.email || 'Anonymous',
+            email: user.email || '',
+            resets_completed: 1,
+            focus_score: points,
+            streak: 1,
+            last_reset_date: today,
+          });
+          if (insertError) return { ok: false, reason: 'insert_failed' };
+        }
+
+        return { ok: true };
+      };
+
+      window.saveReflection = async function saveReflection() {
+        if (!supabase) {
+          return { ok: false, reason: 'supabase_unavailable' };
+        }
+        const input = document.getElementById('reflectionInput');
+        const text = input ? input.value.trim() : '';
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          alert('Login first');
+          return { ok: false, reason: 'not_logged_in' };
+        }
+
+        const { error } = await supabase.from('reflections').insert({
+          user_id: user.id,
+          content: text,
+        });
+
+        if (error) {
+          return { ok: false, reason: 'insert_failed' };
+        }
+
+        alert('Reflection saved ✨');
+        return { ok: true };
+      };
     </script>
     <script>
       (async () => {
@@ -400,10 +476,7 @@
         ];
 
         const isSupabaseConfigured = () =>
-          Boolean(supabase) &&
-          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
-          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
-          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
+          Boolean(supabase) && Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
         let email = '';
         let userId = null;
@@ -727,7 +800,7 @@
           intentionEl.value = lastEntry.intention || '';
         }
 
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
           saveStatusEl.className = 'save-status';
           if (!isComplete) {
             saveStatusEl.textContent = 'Finish the timer before completing your session.';
@@ -760,6 +833,15 @@
 
           saveStatusEl.textContent = 'Saved. Redirecting to leaderboard...';
           saveStatusEl.classList.add('success');
+
+          try {
+            if (window.completeReset) {
+              await window.completeReset(10);
+            }
+            if (window.saveReflection) {
+              await window.saveReflection();
+            }
+          } catch {}
 
           setTimeout(() => {
             window.location.href = 'leaderboard.html';
@@ -965,7 +1047,7 @@
         startBtn.onclick = start;
         pauseBtn.onclick = pause;
         resetBtn.onclick = reset;
-        saveBtn.onclick = () => {
+        saveBtn.onclick = async () => {
           saveStatusEl.className = 'save-status';
           if (!isComplete) {
             saveStatusEl.textContent = 'Finish the timer before completing your session.';
@@ -1016,6 +1098,16 @@
           } catch {}
           saveStatusEl.textContent = 'Saved. Redirecting to leaderboard...';
           saveStatusEl.classList.add('success');
+
+          try {
+            if (window.completeReset) {
+              await window.completeReset(10);
+            }
+            if (window.saveReflection) {
+              await window.saveReflection();
+            }
+          } catch {}
+
           setTimeout(() => {
             window.location.href = 'leaderboard.html';
           }, 500);
