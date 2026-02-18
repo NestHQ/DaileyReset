@@ -796,7 +796,13 @@
           <p class="error" id="signupConfirmError"></p>
 
           <p class="status" id="signupStatus"></p>
-          <button id="signupSubmitBtn" type="submit" class="btn btn-primary" style="width: 100%">Create Account</button>
+          <button
+            id="signupSubmitBtn"
+            type="button"
+            class="btn btn-primary"
+            style="width: 100%"
+            onclick="window.forceSignupSubmit && window.forceSignupSubmit()"
+          >Create Account</button>
         </form>
       </div>
     </div>
@@ -821,6 +827,63 @@
         </form>
       </div>
     </div>
+
+    <script>
+      window.forceSignupSubmit = function forceSignupSubmit() {
+        const emailEl = document.getElementById('signupEmail');
+        const passwordEl = document.getElementById('signupPassword');
+        const confirmEl = document.getElementById('signupConfirm');
+        const statusEl = document.getElementById('signupStatus');
+        const emailErrorEl = document.getElementById('signupEmailError');
+        const passErrorEl = document.getElementById('signupPasswordError');
+        const confirmErrorEl = document.getElementById('signupConfirmError');
+        const email = (emailEl && emailEl.value ? emailEl.value : '').trim().toLowerCase();
+        const password = passwordEl && passwordEl.value ? passwordEl.value : '';
+        const confirmPassword = confirmEl && confirmEl.value ? confirmEl.value : '';
+        const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+        if (emailErrorEl) emailErrorEl.textContent = '';
+        if (passErrorEl) passErrorEl.textContent = '';
+        if (confirmErrorEl) confirmErrorEl.textContent = '';
+        if (statusEl) statusEl.textContent = '';
+
+        if (!validateEmail(email)) {
+          if (emailErrorEl) emailErrorEl.textContent = 'Enter a valid email address.';
+          return;
+        }
+        if (!password || password.length < 6) {
+          if (passErrorEl) passErrorEl.textContent = 'Password must be at least 6 characters.';
+          return;
+        }
+        if (password !== confirmPassword) {
+          if (confirmErrorEl) confirmErrorEl.textContent = 'Passwords do not match.';
+          return;
+        }
+
+        let users = [];
+        try {
+          users = JSON.parse(localStorage.getItem('users') || '[]');
+          if (!Array.isArray(users)) users = [];
+        } catch {
+          users = [];
+        }
+
+        if (users.some((user) => (user.email || '').toLowerCase() === email)) {
+          if (emailErrorEl) emailErrorEl.textContent = 'This email already has an account. Please sign in.';
+          return;
+        }
+
+        users.push({ email, password, userId: `local-${Date.now()}`, createdAt: Date.now() });
+        try {
+          localStorage.setItem('users', JSON.stringify(users));
+          localStorage.setItem('daily-reset-local-session-email', email);
+          localStorage.setItem('daily-reset-flash', 'Sign up successful. Redirecting to your 3-minute reset...');
+        } catch {}
+
+        if (statusEl) statusEl.textContent = 'Sign up successful. Redirecting...';
+        window.location.href = 'timer.html';
+      };
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
