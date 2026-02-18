@@ -224,7 +224,10 @@
     <script>
       const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
       const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === 'function'
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
     </script>
     <script>
       (async () => {
@@ -232,6 +235,7 @@
         const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
         const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
         const isSupabaseConfigured = () =>
+          Boolean(supabase) &&
           Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
           !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
           SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
@@ -258,7 +262,13 @@
           email = localEmail;
         }
 
-        const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        let stats = {};
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+          stats = parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+          stats = {};
+        }
         const bodyEl = document.getElementById('leaderboardBody');
         const userLabelEl = document.getElementById('userLabel');
         const flashEl = document.getElementById('flashMessage');
@@ -278,12 +288,16 @@
 
         let subscriptionType = 'free';
         if (supabaseMode && userId) {
-          const { data: subscriptionData } = await supabase
-            .from('user_subscriptions')
-            .select('subscription_type')
-            .eq('user_id', userId)
-            .maybeSingle();
-          subscriptionType = subscriptionData?.subscription_type || 'free';
+          try {
+            const { data: subscriptionData } = await supabase
+              .from('user_subscriptions')
+              .select('subscription_type')
+              .eq('user_id', userId)
+              .maybeSingle();
+            subscriptionType = subscriptionData?.subscription_type || 'free';
+          } catch {
+            subscriptionType = 'free';
+          }
         }
         const hasProAccess = !supabaseMode || subscriptionType === 'pro' || subscriptionType === 'team';
 
