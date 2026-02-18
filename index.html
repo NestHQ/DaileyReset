@@ -833,6 +833,7 @@
         const FLASH_KEY = 'daily-reset-flash';
         const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
         const USERS_STORAGE_KEY = 'users';
+        const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
 
         // Sticky nav
         const header = document.querySelector('.site-header');
@@ -973,6 +974,41 @@
 
         initUsersStorage();
 
+        const isSupabaseConfigured = () =>
+          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
+          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
+          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
+
+        const parseAuthError = (error, fallbackMessage) => {
+          const raw = error && error.message ? error.message : '';
+          const message = raw.toLowerCase();
+          if (!message) return fallbackMessage;
+          if (message.includes('already registered') || message.includes('already exists')) {
+            return 'This email already has an account. Please sign in.';
+          }
+          if (message.includes('invalid login credentials')) {
+            return 'Incorrect email or password.';
+          }
+          if (message.includes('email not confirmed')) {
+            return 'Please verify your email first, then sign in.';
+          }
+          if (message.includes('invalid email')) {
+            return 'Please enter a valid email address.';
+          }
+          if (message.includes('password')) {
+            return 'Password does not meet requirements.';
+          }
+          if (message.includes('failed to fetch') || message.includes('network') || message.includes('cors')) {
+            return 'Cannot reach authentication service. Check your internet or Supabase settings.';
+          }
+          return fallbackMessage;
+        };
+
+        const getLocalUserByEmail = (email) => {
+          const users = getLocalUsers();
+          return users.find((user) => (user.email || '').toLowerCase() === email) || null;
+        };
+
         async function upgradeUserSubscription(userId, subscriptionType) {
           const { error } = await supabase.from('user_subscriptions').upsert(
             {
@@ -1039,10 +1075,23 @@
           }
           if (!valid) return;
 
-          const localUsers = getLocalUsers();
-          const hasDuplicateLocalEmail = localUsers.some((user) => (user.email || '').toLowerCase() === email);
-          if (hasDuplicateLocalEmail) {
-            showError('signupEmail', 'This email is already registered. Please sign in instead.');
+          if (!isSupabaseConfigured()) {
+            const existingUser = getLocalUserByEmail(email);
+            if (existingUser) {
+              showError('signupEmail', 'This email already has an account. Please sign in.');
+              return;
+            }
+            upsertLocalUser(email, existingUser?.userId || `local-${Date.now()}`);
+            const users = getLocalUsers();
+            const idx = users.findIndex((user) => (user.email || '').toLowerCase() === email);
+            users[idx] = { ...users[idx], password };
+            saveLocalUsers(users);
+            localStorage.setItem(LOCAL_SESSION_KEY, email);
+            localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+            statusEl.textContent = 'Sign up successful. Redirecting...';
+            setTimeout(() => {
+              window.location.href = 'timer.html';
+            }, 700);
             return;
           }
 
@@ -1053,7 +1102,7 @@
               password,
             });
             if (error) {
-              showError('signupEmail', error.message);
+              showError('signupEmail', parseAuthError(error, 'Unable to create account.'));
               statusEl.textContent = '';
               return;
             }
@@ -1086,19 +1135,8 @@
               statusEl.textContent = 'Account created. Please verify your email, then sign in.';
             }
           } catch (error) {
-            const message = (error && error.message ? error.message : '').toLowerCase();
-            if (message.includes('already registered') || message.includes('already exists')) {
-              showError('signupEmail', 'This email already has an account. Please sign in.');
-              statusEl.textContent = '';
-            } else if (message.includes('invalid email')) {
-              showError('signupEmail', 'Email format is invalid.');
-              statusEl.textContent = '';
-            } else if (message.includes('password')) {
-              showError('signupPassword', 'Password does not meet requirements.');
-              statusEl.textContent = '';
-            } else {
-              statusEl.textContent = 'Sign up failed. Please check your details and try again.';
-            }
+            showError('signupEmail', parseAuthError(error, 'Sign up failed. Please try again.'));
+            statusEl.textContent = '';
           }
         });
 
@@ -1123,11 +1161,25 @@
             valid = false;
           }
           if (!valid) return;
+          if (!isSupabaseConfigured()) {
+            const user = getLocalUserByEmail(email);
+            if (!user || user.password !== password) {
+              showError('loginPassword', 'Incorrect email or password.');
+              return;
+            }
+            localStorage.setItem(LOCAL_SESSION_KEY, email);
+            localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+            statusEl.textContent = 'Sign in successful. Redirecting...';
+            setTimeout(() => {
+              window.location.href = 'timer.html';
+            }, 700);
+            return;
+          }
 
           try {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
-              showError('loginPassword', 'Incorrect email or password.');
+              showError('loginPassword', parseAuthError(error, 'Unable to sign in.'));
               return;
             }
             localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
@@ -1135,8 +1187,9 @@
             setTimeout(() => {
               window.location.href = 'timer.html';
             }, 900);
-          } catch {
-            statusEl.textContent = 'Unable to sign in right now. Try again.';
+          } catch (error) {
+            showError('loginPassword', parseAuthError(error, 'Unable to sign in right now. Try again.'));
+            statusEl.textContent = '';
           }
         });
 

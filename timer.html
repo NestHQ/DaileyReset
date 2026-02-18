@@ -366,6 +366,7 @@
     <script>
       (async () => {
         const FLASH_KEY = 'daily-reset-flash';
+        const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
         const ENTRIES_KEY = 'daily-reset-entries';
         const STATS_KEY = 'daily-reset-user-stats';
         const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
@@ -395,13 +396,33 @@
           "What do you need less of today?",
         ];
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          window.location.href = '/';
-          return;
+        const isSupabaseConfigured = () =>
+          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
+          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
+          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
+
+        let email = '';
+        let userId = null;
+        let supabaseMode = isSupabaseConfigured();
+
+        if (supabaseMode) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session) {
+            window.location.href = '/';
+            return;
+          }
+          email = session.user?.email || 'user@example.com';
+          userId = session.user?.id;
+        } else {
+          const localEmail = localStorage.getItem(LOCAL_SESSION_KEY);
+          if (!localEmail) {
+            window.location.href = 'index.html';
+            return;
+          }
+          email = localEmail;
         }
-        const email = session.user?.email || 'user@example.com';
-        const userId = session.user?.id;
 
         const emailEl = document.getElementById('userEmail');
         const timerDisplayEl = document.getElementById('timerDisplay');
@@ -439,6 +460,7 @@
         const getEntries = () => JSON.parse(localStorage.getItem(ENTRIES_KEY) || '{}');
 
         const getSubscriptionType = async () => {
+          if (!supabaseMode) return 'free';
           if (!userId) return 'free';
           const { data } = await supabase
             .from('user_subscriptions')
@@ -749,8 +771,13 @@
         });
 
         async function logout() {
-          await supabase.auth.signOut();
-          window.location.href = '/';
+          if (supabaseMode) {
+            await supabase.auth.signOut();
+            window.location.href = '/';
+            return;
+          }
+          localStorage.removeItem(LOCAL_SESSION_KEY);
+          window.location.href = 'index.html';
         }
 
         reflectionPromptEl.textContent = getDailyPrompt();

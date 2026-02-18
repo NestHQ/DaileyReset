@@ -230,13 +230,33 @@
       (async () => {
         const STATS_KEY = 'daily-reset-user-stats';
         const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
+        const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
+        const isSupabaseConfigured = () =>
+          Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
+          !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
+          SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          window.location.href = '/';
-          return;
+        let email = '';
+        let userId = null;
+        let supabaseMode = isSupabaseConfigured();
+        if (supabaseMode) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session) {
+            window.location.href = '/';
+            return;
+          }
+          email = session.user?.email || 'user@example.com';
+          userId = session.user?.id || null;
+        } else {
+          const localEmail = localStorage.getItem(LOCAL_SESSION_KEY);
+          if (!localEmail) {
+            window.location.href = 'index.html';
+            return;
+          }
+          email = localEmail;
         }
-        const email = session.user?.email || 'user@example.com';
 
         const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
         const bodyEl = document.getElementById('leaderboardBody');
@@ -256,12 +276,15 @@
           localStorage.removeItem(LEADERBOARD_FLASH_KEY);
         }
 
-        const { data: subscriptionData } = await supabase
-          .from('user_subscriptions')
-          .select('subscription_type')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        const subscriptionType = subscriptionData?.subscription_type || 'free';
+        let subscriptionType = 'free';
+        if (supabaseMode && userId) {
+          const { data: subscriptionData } = await supabase
+            .from('user_subscriptions')
+            .select('subscription_type')
+            .eq('user_id', userId)
+            .maybeSingle();
+          subscriptionType = subscriptionData?.subscription_type || 'free';
+        }
         const hasProAccess = subscriptionType === 'pro' || subscriptionType === 'team';
 
         if (!hasProAccess) {
@@ -307,8 +330,13 @@
         });
 
         async function logout() {
-          await supabase.auth.signOut();
-          window.location.href = '/';
+          if (supabaseMode) {
+            await supabase.auth.signOut();
+            window.location.href = '/';
+            return;
+          }
+          localStorage.removeItem(LOCAL_SESSION_KEY);
+          window.location.href = 'index.html';
         }
       })();
     </script>
