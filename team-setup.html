@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Reset | Team Setup</title>
+    <style>
+      :root {
+        --bg: #f3f5f9;
+        --surface: #ffffff;
+        --text: #172235;
+        --muted: #607089;
+        --line: #d9e1ef;
+        --primary: #2d62f2;
+        --primary-dark: #1f50cf;
+        --danger: #d64545;
+        --radius: 16px;
+        --shadow: 0 14px 34px rgba(20, 40, 85, 0.11);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 10% 0%, #ebf1ff 0%, transparent 35%),
+          radial-gradient(circle at 90% 20%, #ecfbf7 0%, transparent 30%), var(--bg);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: min(760px, 100%);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+
+      h1 { margin: 0 0 8px; }
+
+      .muted {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .label {
+        margin: 14px 0 6px;
+        display: block;
+        font-weight: 700;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 210px;
+        resize: vertical;
+      }
+
+      .hint {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .error {
+        min-height: 1.2em;
+        margin: 8px 0 0;
+        color: var(--danger);
+      }
+
+      .status {
+        min-height: 1.2em;
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        border: 0;
+        border-radius: 16px;
+        padding: 12px 16px;
+        text-decoration: none;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .btn-primary:hover { background: var(--primary-dark); }
+
+      .btn-secondary {
+        background: #fff;
+        border: 1px solid var(--line);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Team Setup</h1>
+      <p class="muted">Add up to 25 team emails. We'll activate invites first, then continue to checkout.</p>
+
+      <form id="teamSetupForm" novalidate>
+        <label class="label" for="purchaserEmail">Purchaser Email</label>
+        <input id="purchaserEmail" type="email" required />
+
+        <label class="label" for="memberEmails">Team Member Emails</label>
+        <textarea id="memberEmails" placeholder="one@email.com&#10;two@email.com&#10;..." required></textarea>
+        <p class="hint" id="emailCount">0 / 25 emails</p>
+        <p class="error" id="formError"></p>
+        <p class="status" id="formStatus"></p>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit" id="continueBtn">Continue to Team Checkout</button>
+          <a class="btn btn-secondary" href="index.html">Back</a>
+        </div>
+      </form>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <script>
+      (() => {
+        const TEAM_CHECKOUT_URL = 'https://buy.stripe.com/6oUeV5dvMdmD6nA48F6Vq04';
+        const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
+        const purchaserEmailEl = document.getElementById('purchaserEmail');
+        const memberEmailsEl = document.getElementById('memberEmails');
+        const emailCountEl = document.getElementById('emailCount');
+        const formErrorEl = document.getElementById('formError');
+        const formStatusEl = document.getElementById('formStatus');
+        const continueBtn = document.getElementById('continueBtn');
+        const form = document.getElementById('teamSetupForm');
+
+        const normalizeEmail = (email) => email.trim().toLowerCase();
+        const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+        const parseEmails = (raw) => {
+          const entries = raw
+            .split(/[\n,;]+/)
+            .map(normalizeEmail)
+            .filter(Boolean);
+          return Array.from(new Set(entries));
+        };
+
+        const updateCount = () => {
+          const emails = parseEmails(memberEmailsEl.value);
+          emailCountEl.textContent = `${emails.length} / 25 emails`;
+        };
+
+        memberEmailsEl.addEventListener('input', updateCount);
+
+        const loadSessionEmail = async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.email) {
+            purchaserEmailEl.value = session.user.email.toLowerCase();
+          }
+        };
+
+        async function handleTeamSetup(event) {
+          event.preventDefault();
+          formErrorEl.textContent = '';
+          formStatusEl.textContent = '';
+
+          const purchaserEmail = normalizeEmail(purchaserEmailEl.value);
+          const emails = parseEmails(memberEmailsEl.value);
+
+          if (!validateEmail(purchaserEmail)) {
+            formErrorEl.textContent = 'Enter a valid purchaser email.';
+            return;
+          }
+          if (emails.length < 1) {
+            formErrorEl.textContent = 'Add at least one team email.';
+            return;
+          }
+          if (emails.length > 25) {
+            formErrorEl.textContent = 'Maximum 25 team emails allowed.';
+            return;
+          }
+
+          const invalid = emails.find((email) => !validateEmail(email));
+          if (invalid) {
+            formErrorEl.textContent = `Invalid email: ${invalid}`;
+            return;
+          }
+
+          continueBtn.disabled = true;
+          formStatusEl.textContent = 'Saving team invites...';
+
+          try {
+            const { data: existingRows, error: existingError } = await supabase
+              .from('team_invites')
+              .select('member_email')
+              .eq('purchaser_email', purchaserEmail)
+              .in('member_email', emails);
+            if (existingError) throw existingError;
+
+            const existingSet = new Set((existingRows || []).map((row) => normalizeEmail(row.member_email)));
+            const uniqueToInsert = emails.filter((email) => !existingSet.has(email));
+
+            if (uniqueToInsert.length > 0) {
+              const rows = uniqueToInsert.map((memberEmail) => ({
+                purchaser_email: purchaserEmail,
+                member_email: memberEmail,
+                redeemed: false,
+              }));
+
+              const { error: insertError } = await supabase.from('team_invites').insert(rows);
+              if (insertError) throw insertError;
+            }
+
+            localStorage.setItem(CHECKOUT_PLAN_KEY, 'team');
+            window.location.href = TEAM_CHECKOUT_URL;
+          } catch {
+            formErrorEl.textContent = 'Unable to save team invites right now. Try again.';
+            continueBtn.disabled = false;
+            formStatusEl.textContent = '';
+          }
+        }
+
+        form.addEventListener('submit', handleTeamSetup);
+        loadSessionEmail();
+        updateCount();
+      })();
+    </script>
+  </body>
+</html>

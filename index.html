@@ -683,7 +683,11 @@
                 <li>Advanced analytics</li>
                 <li>Weekly leaderboard challenges</li>
               </ul>
-              <a class="btn btn-primary" href="https://buy.stripe.com/8x27sDgHY82jaDQcFb6Vq03">Monthly Plan</a>
+              <a
+                class="btn btn-primary"
+                href="https://buy.stripe.com/8x29ALfDUbev5jwfRn6Vq05"
+                data-checkout-plan="pro"
+              >Monthly Plan</a>
             </article>
             <article class="card reveal">
               <h3>Team</h3>
@@ -693,7 +697,11 @@
                 <li>Team reports</li>
                 <li>Priority support</li>
               </ul>
-              <button class="btn btn-secondary" type="button" data-open-modal="signup">Choose Team</button>
+              <a
+                class="btn btn-secondary"
+                href="team-setup.html"
+                data-checkout-plan="team"
+              >Choose Team</a>
             </article>
           </div>
         </div>
@@ -814,11 +822,16 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      (() => {
-        const USERS_KEY = 'daily-reset-users';
-        const SESSION_KEY = 'daily-reset-session';
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <script>
+      (async () => {
         const FLASH_KEY = 'daily-reset-flash';
+        const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
 
         // Sticky nav
         const header = document.querySelector('.site-header');
@@ -826,18 +839,14 @@
         const menuToggle = document.getElementById('menuToggle');
 
         const updateHeaderState = () => {
-          if (window.scrollY > 8) {
-            header.classList.add('scrolled');
-          } else {
-            header.classList.remove('scrolled');
-          }
+          if (window.scrollY > 8) header.classList.add('scrolled');
+          else header.classList.remove('scrolled');
         };
         updateHeaderState();
         window.addEventListener('scroll', updateHeaderState);
 
         // Smooth scroll
-        const inPageLinks = document.querySelectorAll('a[href^="#"]');
-        inPageLinks.forEach((link) => {
+        document.querySelectorAll('a[href^="#"]').forEach((link) => {
           link.addEventListener('click', (event) => {
             const id = link.getAttribute('href');
             const target = id ? document.querySelector(id) : null;
@@ -863,9 +872,7 @@
           btn.addEventListener('click', () => {
             faqItems.forEach((other) => {
               const otherContent = other.querySelector('.faq-content');
-              if (other !== item) {
-                otherContent.style.maxHeight = '0px';
-              }
+              if (other !== item) otherContent.style.maxHeight = '0px';
             });
             const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
             content.style.maxHeight = isOpen ? '0px' : `${content.scrollHeight}px`;
@@ -892,55 +899,32 @@
 
         openButtons.forEach((btn) => {
           btn.addEventListener('click', () => {
-            const type = btn.getAttribute('data-open-modal');
-            openModal(type);
+            openModal(btn.getAttribute('data-open-modal'));
             mobileMenu.classList.remove('open');
             menuToggle.setAttribute('aria-expanded', 'false');
           });
         });
-
-        closeButtons.forEach((btn) => {
-          btn.addEventListener('click', closeModals);
-        });
-
+        closeButtons.forEach((btn) => btn.addEventListener('click', closeModals));
         [signupModal, loginModal].forEach((modal) => {
           modal.addEventListener('click', (event) => {
-            if (event.target === modal) {
-              closeModals();
-            }
+            if (event.target === modal) closeModals();
+          });
+        });
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') closeModals();
+        });
+
+        document.querySelectorAll('[data-checkout-plan]').forEach((link) => {
+          link.addEventListener('click', () => {
+            localStorage.setItem(CHECKOUT_PLAN_KEY, link.dataset.checkoutPlan);
           });
         });
 
-        window.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
-            closeModals();
-          }
-        });
-
-        // Auth helpers
-        const getUsers = () => {
-          try {
-            return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
-          } catch {
-            return {};
-          }
-        };
-
-        const setUsers = (users) => {
-          localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        };
-
-        const setSession = (email) => {
-          localStorage.setItem(SESSION_KEY, email);
-        };
-
         const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
         const showError = (inputId, message) => {
           const errorEl = document.getElementById(`${inputId}Error`);
           if (errorEl) errorEl.textContent = message;
         };
-
         const clearFormState = (formId, statusId) => {
           document.querySelectorAll(`#${formId} .error`).forEach((el) => {
             el.textContent = '';
@@ -949,9 +933,41 @@
           if (status) status.textContent = '';
         };
 
-        // Sign up flow
+        async function upgradeUserSubscription(userId, subscriptionType) {
+          const { error } = await supabase.from('user_subscriptions').upsert(
+            {
+              user_id: userId,
+              subscription_type: subscriptionType,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          );
+          if (error) throw error;
+        }
+
+        async function checkTeamInviteOnSignup(email, userId) {
+          const normalizedEmail = email.toLowerCase();
+          const { data, error } = await supabase
+            .from('team_invites')
+            .select('id')
+            .eq('member_email', normalizedEmail)
+            .eq('redeemed', false);
+          if (error) throw error;
+          if (!data || data.length === 0) return false;
+
+          const inviteIds = data.map((row) => row.id);
+          const { error: updateError } = await supabase
+            .from('team_invites')
+            .update({ redeemed: true })
+            .in('id', inviteIds);
+          if (updateError) throw updateError;
+
+          await upgradeUserSubscription(userId, 'team');
+          return true;
+        }
+
         const signupForm = document.getElementById('signupForm');
-        signupForm.addEventListener('submit', (event) => {
+        signupForm.addEventListener('submit', async (event) => {
           event.preventDefault();
           clearFormState('signupForm', 'signupStatus');
 
@@ -983,37 +999,56 @@
           }
           if (!valid) return;
 
-          const users = getUsers();
-          if (users[email]) {
-            showError('signupEmail', 'An account with this email already exists.');
-            return;
+          try {
+            statusEl.textContent = 'Creating account...';
+            const { data, error } = await supabase.auth.signUp({
+              email,
+              password,
+            });
+            if (error) {
+              showError('signupEmail', error.message);
+              statusEl.textContent = '';
+              return;
+            }
+
+            if (!data.user) {
+              statusEl.textContent = 'Account created. Please check your inbox.';
+              return;
+            }
+
+            const upgradedByInvite = await checkTeamInviteOnSignup(email, data.user.id);
+            if (!upgradedByInvite) {
+              await upgradeUserSubscription(data.user.id, 'free');
+            }
+
+            let hasSession = Boolean(data.session);
+            if (!hasSession) {
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+              hasSession = Boolean(signInData.session) && !signInError;
+            }
+
+            if (hasSession) {
+              localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+              statusEl.textContent = 'Sign up successful. Redirecting...';
+              setTimeout(() => {
+                window.location.href = 'timer.html';
+              }, 900);
+            } else {
+              statusEl.textContent = 'Account created. Please verify your email, then sign in.';
+            }
+          } catch {
+            statusEl.textContent = 'Unable to complete sign up right now. Try again.';
           }
-
-          users[email] = {
-            email,
-            password,
-            createdAt: Date.now(),
-          };
-          setUsers(users);
-          setSession(email);
-          localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
-          statusEl.textContent = 'Sign up successful. Redirecting...';
-
-          setTimeout(() => {
-            window.location.href = 'timer.html';
-          }, 900);
         });
 
-        // Sign in flow
         const loginForm = document.getElementById('loginForm');
-        loginForm.addEventListener('submit', (event) => {
+        loginForm.addEventListener('submit', async (event) => {
           event.preventDefault();
           clearFormState('loginForm', 'loginStatus');
 
           const emailEl = document.getElementById('loginEmail');
           const passwordEl = document.getElementById('loginPassword');
           const statusEl = document.getElementById('loginStatus');
-
           const email = emailEl.value.trim().toLowerCase();
           const password = passwordEl.value;
           let valid = true;
@@ -1028,20 +1063,20 @@
           }
           if (!valid) return;
 
-          const users = getUsers();
-          const user = users[email];
-          if (!user || user.password !== password) {
-            showError('loginPassword', 'Incorrect email or password.');
-            return;
+          try {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+              showError('loginPassword', 'Incorrect email or password.');
+              return;
+            }
+            localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+            statusEl.textContent = 'Sign in successful. Redirecting...';
+            setTimeout(() => {
+              window.location.href = 'timer.html';
+            }, 900);
+          } catch {
+            statusEl.textContent = 'Unable to sign in right now. Try again.';
           }
-
-          setSession(email);
-          localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
-          statusEl.textContent = 'Sign in successful. Redirecting...';
-
-          setTimeout(() => {
-            window.location.href = 'timer.html';
-          }, 900);
         });
 
         // Scroll animations
@@ -1056,7 +1091,6 @@
           },
           { threshold: 0.15 }
         );
-
         document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
       })();
     </script>
