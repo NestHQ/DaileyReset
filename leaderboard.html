@@ -166,6 +166,15 @@
         text-align: center;
         padding: 16px;
       }
+
+      .locked {
+        margin: 12px 0 0;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        background: #fafbff;
+      }
     </style>
   </head>
   <body>
@@ -184,6 +193,10 @@
           <p>Reach a 100 Day Streak and win $100.</p>
           <p>Higher streaks unlock bigger prizes.</p>
         </section>
+
+        <div class="locked" id="lockedMessage" hidden>
+          Leaderboard is a Pro feature. Upgrade to Pro or Team to unlock global rankings.
+        </div>
 
         <div class="table-wrap">
           <table>
@@ -207,6 +220,12 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
     <script>
       (async () => {
         const STATS_KEY = 'daily-reset-user-stats';
@@ -223,6 +242,8 @@
         const bodyEl = document.getElementById('leaderboardBody');
         const userLabelEl = document.getElementById('userLabel');
         const flashEl = document.getElementById('flashMessage');
+        const lockedMessageEl = document.getElementById('lockedMessage');
+        const tableWrapEl = document.querySelector('.table-wrap');
         const startSessionBtn = document.getElementById('startSessionBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
@@ -235,6 +256,19 @@
           localStorage.removeItem(LEADERBOARD_FLASH_KEY);
         }
 
+        const { data: subscriptionData } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_type')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        const subscriptionType = subscriptionData?.subscription_type || 'free';
+        const hasProAccess = subscriptionType === 'pro' || subscriptionType === 'team';
+
+        if (!hasProAccess) {
+          lockedMessageEl.hidden = false;
+          tableWrapEl.hidden = true;
+        }
+
         const allUsers = Array.from(new Set([...Object.keys(stats), email]))
           .map((userEmail) => ({
             email: userEmail,
@@ -243,7 +277,9 @@
           }))
           .sort((a, b) => b.streak - a.streak || b.totalSessions - a.totalSessions || a.email.localeCompare(b.email));
 
-        if (allUsers.length === 0) {
+        if (!hasProAccess) {
+          bodyEl.innerHTML = '';
+        } else if (allUsers.length === 0) {
           bodyEl.innerHTML = '<tr><td class="empty" colspan="4">No leaderboard data yet.</td></tr>';
         } else {
           bodyEl.innerHTML = allUsers

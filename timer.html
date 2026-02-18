@@ -302,6 +302,7 @@
 
         <div class="flash" id="flashMessage"></div>
         <p class="streak" id="streakLabel">🔥 0 Day Streak</p>
+        <p class="user" id="planLabel">Plan: free</p>
 
         <div class="timer-wrap">
           <div class="timer-ring" id="timerRing" style="--progress: 100">
@@ -356,6 +357,12 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
     <script>
       (async () => {
         const FLASH_KEY = 'daily-reset-flash';
@@ -394,12 +401,14 @@
           return;
         }
         const email = session.user?.email || 'user@example.com';
+        const userId = session.user?.id;
 
         const emailEl = document.getElementById('userEmail');
         const timerDisplayEl = document.getElementById('timerDisplay');
         const timerRingEl = document.getElementById('timerRing');
         const phaseLabelEl = document.getElementById('phaseLabel');
         const streakLabelEl = document.getElementById('streakLabel');
+        const planLabelEl = document.getElementById('planLabel');
         const reflectionPromptEl = document.querySelector('[data-phase="reflection"] p');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -428,6 +437,16 @@
         const getStats = () => JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
         const setStats = (stats) => localStorage.setItem(STATS_KEY, JSON.stringify(stats));
         const getEntries = () => JSON.parse(localStorage.getItem(ENTRIES_KEY) || '{}');
+
+        const getSubscriptionType = async () => {
+          if (!userId) return 'free';
+          const { data } = await supabase
+            .from('user_subscriptions')
+            .select('subscription_type')
+            .eq('user_id', userId)
+            .maybeSingle();
+          return data?.subscription_type || 'free';
+        };
 
         const getDailyPrompt = () => {
           const now = new Date();
@@ -736,6 +755,12 @@
 
         reflectionPromptEl.textContent = getDailyPrompt();
         updateStreakLabel();
+        const subscriptionType = await getSubscriptionType();
+        const hasProAccess = subscriptionType === 'pro' || subscriptionType === 'team';
+        planLabelEl.textContent = `Plan: ${subscriptionType}`;
+        if (!hasProAccess) {
+          phaseLabelEl.textContent = `${phaseLabelEl.textContent} · Free`;
+        }
         restoreTimerState();
       })();
     </script>

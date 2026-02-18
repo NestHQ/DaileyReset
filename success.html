@@ -71,9 +71,51 @@
   </head>
   <body>
     <main class="card">
-      <h1>Payment Successful</h1>
-      <p>Your Daily Reset plan is now active. You can continue to your dashboard.</p>
+      <h1 id="title">Payment Successful</h1>
+      <p id="message">Your Daily Reset plan is now active.</p>
       <a class="btn" href="dashboard.html">Go to Dashboard</a>
     </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <script>
+      (async () => {
+        const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
+        const titleEl = document.getElementById('title');
+        const messageEl = document.getElementById('message');
+        const urlPlan = new URLSearchParams(window.location.search).get('plan');
+        const storedPlan = localStorage.getItem(CHECKOUT_PLAN_KEY);
+        const plan = (urlPlan || storedPlan || 'pro').toLowerCase();
+
+        const upgradeUserSubscription = async (userId, subscriptionType) => {
+          await supabase.from('user_subscriptions').upsert(
+            {
+              user_id: userId,
+              subscription_type: subscriptionType,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          );
+        };
+
+        if (plan === 'team') {
+          titleEl.textContent = 'Team Purchase Confirmed';
+          messageEl.textContent = 'Your team invites are active. Members can now sign up using the emails you provided.';
+        } else {
+          titleEl.textContent = 'Pro Activated';
+          messageEl.textContent = 'Your Pro access is now active.';
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id) {
+            await upgradeUserSubscription(session.user.id, 'pro');
+          }
+        }
+
+        localStorage.removeItem(CHECKOUT_PLAN_KEY);
+      })();
+    </script>
   </body>
 </html>
