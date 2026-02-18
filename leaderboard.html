@@ -74,6 +74,25 @@
         border-radius: var(--radius);
       }
 
+      .rewards {
+        margin: 12px 0 16px;
+        padding: 16px;
+        border-radius: var(--radius);
+        border: 1px solid #cfdcf7;
+        background: linear-gradient(135deg, #f3f7ff 0%, #eef8f5 100%);
+        box-shadow: 0 10px 24px rgba(32, 68, 145, 0.08);
+      }
+
+      .rewards h2 {
+        margin: 0 0 6px;
+        font-size: 1.2rem;
+      }
+
+      .rewards p {
+        margin: 0;
+        color: var(--muted);
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -160,6 +179,11 @@
         </div>
 
         <div class="flash" id="flashMessage"></div>
+        <section class="rewards" aria-label="Streak rewards">
+          <h2>🏆 Streak Rewards</h2>
+          <p>Reach a 100 Day Streak and win $100.</p>
+          <p>Higher streaks unlock bigger prizes.</p>
+        </section>
 
         <div class="table-wrap">
           <table>
@@ -184,24 +208,16 @@
     </main>
 
     <script>
-      (() => {
-        const USERS_KEY = 'daily-reset-users';
-        const SESSION_KEY = 'daily-reset-session';
+      (async () => {
         const STATS_KEY = 'daily-reset-user-stats';
         const LEADERBOARD_FLASH_KEY = 'daily-reset-leaderboard-flash';
 
-        const email = localStorage.getItem(SESSION_KEY);
-        if (!email) {
-          window.location.href = 'index.html';
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          window.location.href = '/';
           return;
         }
-
-        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-        if (!users[email]) {
-          localStorage.removeItem(SESSION_KEY);
-          window.location.href = 'index.html';
-          return;
-        }
+        const email = session.user?.email || 'user@example.com';
 
         const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
         const bodyEl = document.getElementById('leaderboardBody');
@@ -219,7 +235,7 @@
           localStorage.removeItem(LEADERBOARD_FLASH_KEY);
         }
 
-        const allUsers = Object.keys(users)
+        const allUsers = Array.from(new Set([...Object.keys(stats), email]))
           .map((userEmail) => ({
             email: userEmail,
             streak: stats[userEmail]?.streak || 0,
@@ -246,14 +262,18 @@
         }
 
         logoutBtn.addEventListener('click', () => {
-          localStorage.removeItem(SESSION_KEY);
-          window.location.href = 'index.html';
+          logout();
         });
 
         startSessionBtn.addEventListener('click', () => {
           localStorage.removeItem(`daily-reset-timer-state-${email}`);
           window.location.href = 'timer.html';
         });
+
+        async function logout() {
+          await supabase.auth.signOut();
+          window.location.href = '/';
+        }
       })();
     </script>
   </body>

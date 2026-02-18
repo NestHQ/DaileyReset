@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Reset | Payment Successful</title>
+    <style>
+      :root {
+        --bg: #f3f5f9;
+        --surface: #ffffff;
+        --text: #172235;
+        --muted: #607089;
+        --line: #d9e1ef;
+        --primary: #2d62f2;
+        --primary-dark: #1f50cf;
+        --radius: 16px;
+        --shadow: 0 14px 34px rgba(20, 40, 85, 0.11);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 10% 0%, #ebf1ff 0%, transparent 35%),
+          radial-gradient(circle at 90% 20%, #ecfbf7 0%, transparent 30%), var(--bg);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: min(620px, 100%);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 28px;
+        text-align: center;
+      }
+
+      h1 { margin: 0 0 10px; }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 18px;
+        text-decoration: none;
+        border: 0;
+        border-radius: 16px;
+        padding: 12px 18px;
+        font-weight: 700;
+        background: var(--primary);
+        color: #fff;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+      }
+
+      .btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Payment Successful</h1>
+      <p>Your Daily Reset plan is now active. You can continue to your dashboard.</p>
+      <a class="btn" href="dashboard.html">Go to Dashboard</a>
+    </main>
+  </body>
+</html>
