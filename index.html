@@ -826,7 +826,10 @@
     <script>
       const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
       const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabase =
+        window.supabase && typeof window.supabase.createClient === 'function'
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
     </script>
     <script>
       (async () => {
@@ -975,6 +978,7 @@
         initUsersStorage();
 
         const isSupabaseConfigured = () =>
+          Boolean(supabase) &&
           Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) &&
           !SUPABASE_URL.includes('YOUR-PROJECT.supabase.co') &&
           SUPABASE_ANON_KEY !== 'YOUR-ANON-KEY';
@@ -1000,6 +1004,9 @@
           }
           if (message.includes('failed to fetch') || message.includes('network') || message.includes('cors')) {
             return 'Cannot reach authentication service. Check your internet or Supabase settings.';
+          }
+          if (message.includes('relation') && message.includes('does not exist')) {
+            return 'Signup worked, but database setup is incomplete. Please run the SQL setup scripts.';
           }
           return fallbackMessage;
         };
@@ -1040,6 +1047,21 @@
 
           await upgradeUserSubscription(userId, 'team');
           return true;
+        }
+
+        async function applyPostSignupAccess(email, userId) {
+          try {
+            const upgradedByInvite = await checkTeamInviteOnSignup(email, userId);
+            if (!upgradedByInvite) {
+              await upgradeUserSubscription(userId, 'free');
+            }
+          } catch (error) {
+            const message = parseAuthError(error, '');
+            if (message) {
+              const statusEl = document.getElementById('signupStatus');
+              if (statusEl) statusEl.textContent = message;
+            }
+          }
         }
 
         const signupForm = document.getElementById('signupForm');
@@ -1112,10 +1134,7 @@
               return;
             }
 
-            const upgradedByInvite = await checkTeamInviteOnSignup(email, data.user.id);
-            if (!upgradedByInvite) {
-              await upgradeUserSubscription(data.user.id, 'free');
-            }
+            await applyPostSignupAccess(email, data.user.id);
 
             upsertLocalUser(email, data.user.id);
 
