@@ -796,7 +796,7 @@
           <p class="error" id="signupConfirmError"></p>
 
           <p class="status" id="signupStatus"></p>
-          <button type="submit" class="btn btn-primary" style="width: 100%">Create Account</button>
+          <button id="signupSubmitBtn" type="submit" class="btn btn-primary" style="width: 100%">Create Account</button>
         </form>
       </div>
     </div>
@@ -1278,9 +1278,10 @@
         };
 
         const signupForm = document.getElementById('signupForm');
+        const signupSubmitBtn = document.getElementById('signupSubmitBtn');
         if (signupForm && !window.__dailyResetSignupBound) {
-          signupForm.addEventListener('submit', (event) => {
-            event.preventDefault();
+          const handleFallbackSignup = (event) => {
+            if (event) event.preventDefault();
             const emailEl = document.getElementById('signupEmail');
             const passwordEl = document.getElementById('signupPassword');
             const confirmEl = document.getElementById('signupConfirm');
@@ -1327,7 +1328,12 @@
             setTimeout(() => {
               window.location.href = 'timer.html';
             }, 700);
-          });
+          };
+
+          signupForm.addEventListener('submit', handleFallbackSignup);
+          if (signupSubmitBtn) {
+            signupSubmitBtn.addEventListener('click', handleFallbackSignup);
+          }
         }
 
         const loginForm = document.getElementById('loginForm');
