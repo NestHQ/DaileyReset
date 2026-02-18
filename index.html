@@ -832,6 +832,7 @@
       (async () => {
         const FLASH_KEY = 'daily-reset-flash';
         const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
+        const USERS_STORAGE_KEY = 'users';
 
         // Sticky nav
         const header = document.querySelector('.site-header');
@@ -933,6 +934,45 @@
           if (status) status.textContent = '';
         };
 
+        const initUsersStorage = () => {
+          const existing = localStorage.getItem(USERS_STORAGE_KEY);
+          if (!existing) {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+          }
+        };
+
+        const getLocalUsers = () => {
+          try {
+            initUsersStorage();
+            const parsed = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY));
+            if (!Array.isArray(parsed)) {
+              localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+              return [];
+            }
+            return parsed;
+          } catch {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+            return [];
+          }
+        };
+
+        const saveLocalUsers = (users) => {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+        };
+
+        const upsertLocalUser = (email, userId) => {
+          const users = getLocalUsers();
+          const existingIdx = users.findIndex((user) => (user.email || '').toLowerCase() === email);
+          if (existingIdx >= 0) {
+            users[existingIdx] = { ...users[existingIdx], email, userId, updatedAt: Date.now() };
+          } else {
+            users.push({ email, userId, createdAt: Date.now() });
+          }
+          saveLocalUsers(users);
+        };
+
+        initUsersStorage();
+
         async function upgradeUserSubscription(userId, subscriptionType) {
           const { error } = await supabase.from('user_subscriptions').upsert(
             {
@@ -999,6 +1039,13 @@
           }
           if (!valid) return;
 
+          const localUsers = getLocalUsers();
+          const hasDuplicateLocalEmail = localUsers.some((user) => (user.email || '').toLowerCase() === email);
+          if (hasDuplicateLocalEmail) {
+            showError('signupEmail', 'This email is already registered. Please sign in instead.');
+            return;
+          }
+
           try {
             statusEl.textContent = 'Creating account...';
             const { data, error } = await supabase.auth.signUp({
@@ -1021,6 +1068,8 @@
               await upgradeUserSubscription(data.user.id, 'free');
             }
 
+            upsertLocalUser(email, data.user.id);
+
             let hasSession = Boolean(data.session);
             if (!hasSession) {
               const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -1036,8 +1085,20 @@
             } else {
               statusEl.textContent = 'Account created. Please verify your email, then sign in.';
             }
-          } catch {
-            statusEl.textContent = 'Unable to complete sign up right now. Try again.';
+          } catch (error) {
+            const message = (error && error.message ? error.message : '').toLowerCase();
+            if (message.includes('already registered') || message.includes('already exists')) {
+              showError('signupEmail', 'This email already has an account. Please sign in.');
+              statusEl.textContent = '';
+            } else if (message.includes('invalid email')) {
+              showError('signupEmail', 'Email format is invalid.');
+              statusEl.textContent = '';
+            } else if (message.includes('password')) {
+              showError('signupPassword', 'Password does not meet requirements.');
+              statusEl.textContent = '';
+            } else {
+              statusEl.textContent = 'Sign up failed. Please check your details and try again.';
+            }
           }
         });
 
