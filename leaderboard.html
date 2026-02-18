@@ -285,7 +285,7 @@
             .maybeSingle();
           subscriptionType = subscriptionData?.subscription_type || 'free';
         }
-        const hasProAccess = subscriptionType === 'pro' || subscriptionType === 'team';
+        const hasProAccess = !supabaseMode || subscriptionType === 'pro' || subscriptionType === 'team';
 
         if (!hasProAccess) {
           lockedMessageEl.hidden = false;
