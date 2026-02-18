@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Reset | 3-Minute Timer</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --text: #152033;
+        --muted: #5e6a7c;
+        --line: #dbe3f0;
+        --primary: #2667ff;
+        --primary-dark: #1650d6;
+        --success: #0f9d74;
+        --radius: 16px;
+        --shadow: 0 10px 30px rgba(22, 42, 90, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 0% 0%, #edf3ff 0%, transparent 35%),
+          radial-gradient(circle at 100% 20%, #ecfff7 0%, transparent 30%), var(--bg);
+      }
+
+      .container {
+        width: min(900px, calc(100% - 32px));
+        margin: 32px auto;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        font-weight: 800;
+      }
+
+      .sub {
+        color: var(--muted);
+      }
+
+      .timer {
+        font-size: clamp(2.2rem, 9vw, 4rem);
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        margin: 8px 0 4px;
+      }
+
+      .session-status {
+        color: var(--muted);
+        min-height: 1.5em;
+        margin-bottom: 14px;
+      }
+
+      .session-status.complete {
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .tasks {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .task {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #f9fbff;
+      }
+
+      .task h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+
+      .task p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      label {
+        display: block;
+        margin: 12px 0 6px;
+        font-weight: 600;
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      .actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .timer-controls {
+        margin: 8px 0 12px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .btn {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .btn-secondary {
+        background: #fff;
+        border: 1px solid var(--line);
+        color: var(--text);
+      }
+
+      .btn:hover {
+        filter: brightness(0.98);
+      }
+
+      .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .saved {
+        color: var(--success);
+        min-height: 1.2em;
+        margin-top: 10px;
+      }
+
+      .flash {
+        background: #eaf9f3;
+        border: 1px solid #bce8d7;
+        color: #0b6d4f;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        display: none;
+      }
+
+      .flash.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <div class="topbar">
+          <div>
+            <div class="brand">Daily Reset</div>
+            <div class="sub" id="userEmail"></div>
+          </div>
+          <div class="actions" style="margin-top: 0">
+            <a href="index.html" class="btn btn-secondary">Back to Home</a>
+            <button type="button" class="btn btn-secondary" id="logoutBtn">Logout</button>
+          </div>
+        </div>
+
+        <div class="flash" id="flashMessage"></div>
+
+        <h1>3-Minute Daily Reset</h1>
+        <p class="timer" id="timerDisplay">03:00</p>
+        <div class="timer-controls">
+          <button type="button" class="btn btn-primary" id="startBtn">Start</button>
+          <button type="button" class="btn btn-secondary" id="pauseBtn">Pause</button>
+          <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+        <p class="session-status" id="sessionStatus">Press Start to begin.</p>
+
+        <div class="tasks">
+          <article class="task">
+            <h3>1. Breathing Focus (Minute 0-1)</h3>
+            <p>
+              Focus on your breathing. Inhale slowly through your nose. Exhale gently through your mouth.
+              Let your body settle. Let your mind slow down.
+            </p>
+          </article>
+          <article class="task">
+            <h3>2. Reflection (Minute 1-2)</h3>
+            <p>What is draining your energy right now? What is one small win from yesterday?</p>
+          </article>
+          <article class="task">
+            <h3>3. Intention (Minute 2-3)</h3>
+            <p>Write one clear intention for today. Make it specific. Make it meaningful.</p>
+          </article>
+        </div>
+
+        <label for="reflectionInput">Reflection</label>
+        <textarea id="reflectionInput" placeholder="Write your reflection..."></textarea>
+
+        <label for="intentionInput">Intention</label>
+        <input id="intentionInput" type="text" placeholder="Write one clear intention..." />
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+        <p class="saved" id="saveStatus"></p>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const USERS_KEY = 'daily-reset-users';
+        const SESSION_KEY = 'daily-reset-session';
+        const FLASH_KEY = 'daily-reset-flash';
+        const ENTRIES_KEY = 'daily-reset-entries';
+        const TIMER_DURATION_MS = 3 * 60 * 1000;
+
+        const email = localStorage.getItem(SESSION_KEY);
+        if (!email) {
+          window.location.href = 'index.html';
+          return;
+        }
+
+        const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+        if (!users[email]) {
+          localStorage.removeItem(SESSION_KEY);
+          window.location.href = 'index.html';
+          return;
+        }
+
+        const emailEl = document.getElementById('userEmail');
+        const timerEl = document.getElementById('timerDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const sessionStatusEl = document.getElementById('sessionStatus');
+        const reflectionEl = document.getElementById('reflectionInput');
+        const intentionEl = document.getElementById('intentionInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveStatusEl = document.getElementById('saveStatus');
+        const flashEl = document.getElementById('flashMessage');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        emailEl.textContent = email;
+
+        const flash = localStorage.getItem(FLASH_KEY);
+        if (flash) {
+          flashEl.textContent = flash;
+          flashEl.classList.add('show');
+          localStorage.removeItem(FLASH_KEY);
+          setTimeout(() => {
+            flashEl.classList.remove('show');
+          }, 1800);
+        }
+
+        const timerStateKey = `daily-reset-timer-state-${email}`;
+        let isRunning = false;
+        let remainingTime = TIMER_DURATION_MS;
+        let intervalId = null;
+        let runStartTime = null;
+        let runStartRemaining = TIMER_DURATION_MS;
+
+        const formatTime = (ms) => {
+          const safeMs = Math.max(0, ms);
+          const totalSeconds = Math.ceil(safeMs / 1000);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        };
+
+        // Timer state
+        const persistTimerState = () => {
+          localStorage.setItem(
+            timerStateKey,
+            JSON.stringify({
+              startTime: runStartTime,
+              remainingTime,
+              isRunning,
+            })
+          );
+        };
+
+        // Update display function
+        const updateDisplay = () => {
+          timerEl.textContent = formatTime(remainingTime);
+          if (remainingTime <= 0) {
+            sessionStatusEl.textContent = 'Session Complete';
+            sessionStatusEl.classList.add('complete');
+          } else if (isRunning) {
+            sessionStatusEl.textContent = 'Session in progress...';
+            sessionStatusEl.classList.remove('complete');
+          } else {
+            sessionStatusEl.textContent = 'Press Start to begin.';
+            sessionStatusEl.classList.remove('complete');
+          }
+        };
+
+        const updateButtons = () => {
+          startBtn.disabled = isRunning || remainingTime <= 0;
+          pauseBtn.disabled = !isRunning;
+        };
+
+        const clearTimerInterval = () => {
+          if (intervalId !== null) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+        };
+
+        const completeSession = () => {
+          clearTimerInterval();
+          isRunning = false;
+          remainingTime = 0;
+          runStartTime = null;
+          runStartRemaining = 0;
+          updateDisplay();
+          updateButtons();
+          persistTimerState();
+        };
+
+        // Start function
+        const startTimer = () => {
+          if (isRunning || remainingTime <= 0) return;
+          clearTimerInterval();
+          isRunning = true;
+          runStartTime = Date.now();
+          runStartRemaining = remainingTime;
+          persistTimerState();
+          updateDisplay();
+          updateButtons();
+
+          intervalId = setInterval(() => {
+            const elapsed = Date.now() - runStartTime;
+            remainingTime = Math.max(0, runStartRemaining - elapsed);
+            if (remainingTime <= 0) {
+              completeSession();
+              return;
+            }
+            updateDisplay();
+            persistTimerState();
+          }, 250);
+        };
+
+        // Pause function
+        const pauseTimer = () => {
+          if (!isRunning) return;
+          const elapsed = Date.now() - runStartTime;
+          remainingTime = Math.max(0, runStartRemaining - elapsed);
+          isRunning = false;
+          runStartTime = null;
+          clearTimerInterval();
+          updateDisplay();
+          updateButtons();
+          persistTimerState();
+        };
+
+        // Reset function
+        const resetTimer = () => {
+          clearTimerInterval();
+          isRunning = false;
+          remainingTime = TIMER_DURATION_MS;
+          runStartTime = null;
+          runStartRemaining = TIMER_DURATION_MS;
+          localStorage.removeItem(timerStateKey);
+          updateDisplay();
+          updateButtons();
+        };
+
+        // Restore session logic
+        const restoreTimerState = () => {
+          const saved = JSON.parse(localStorage.getItem(timerStateKey) || 'null');
+          if (!saved) {
+            updateDisplay();
+            updateButtons();
+            return;
+          }
+
+          if (typeof saved.remainingTime === 'number') {
+            remainingTime = Math.min(TIMER_DURATION_MS, Math.max(0, saved.remainingTime));
+          }
+
+          const wasRunning = Boolean(saved.isRunning);
+          const savedStart = typeof saved.startTime === 'number' ? saved.startTime : null;
+
+          if (wasRunning && savedStart && remainingTime > 0) {
+            const elapsed = Date.now() - savedStart;
+            remainingTime = Math.max(0, remainingTime - elapsed);
+            if (remainingTime <= 0) {
+              completeSession();
+              return;
+            }
+            startTimer();
+            return;
+          }
+
+          isRunning = false;
+          runStartTime = null;
+          runStartRemaining = remainingTime;
+          updateDisplay();
+          updateButtons();
+          persistTimerState();
+        };
+
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        restoreTimerState();
+
+        const getEntries = () => JSON.parse(localStorage.getItem(ENTRIES_KEY) || '{}');
+        const entries = getEntries();
+        if (entries[email]) {
+          reflectionEl.value = entries[email].reflection || '';
+          intentionEl.value = entries[email].intention || '';
+        }
+
+        saveBtn.addEventListener('click', () => {
+          const reflection = reflectionEl.value.trim();
+          const intention = intentionEl.value.trim();
+          const allEntries = getEntries();
+          allEntries[email] = {
+            reflection,
+            intention,
+            updatedAt: Date.now(),
+          };
+          localStorage.setItem(ENTRIES_KEY, JSON.stringify(allEntries));
+          saveStatusEl.textContent = 'Saved';
+          setTimeout(() => {
+            saveStatusEl.textContent = '';
+          }, 1800);
+        });
+
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem(SESSION_KEY);
+          window.location.href = 'index.html';
+        });
+      })();
+    </script>
+  </body>
+</html>

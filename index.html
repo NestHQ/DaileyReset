@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Reset | Focus Better</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --text: #152033;
+        --muted: #5e6a7c;
+        --line: #dbe3f0;
+        --primary: #2667ff;
+        --primary-dark: #1650d6;
+        --success: #0f9d74;
+        --danger: #d64545;
+        --radius: 16px;
+        --shadow: 0 10px 30px rgba(22, 42, 90, 0.1);
+        --section-pad: 80px;
+        --container: 1120px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 0% 0%, #edf3ff 0%, transparent 35%),
+          radial-gradient(circle at 100% 20%, #ecfff7 0%, transparent 30%), var(--bg);
+        line-height: 1.5;
+      }
+
+      .container {
+        width: min(var(--container), calc(100% - 32px));
+        margin-inline: auto;
+      }
+
+      section {
+        padding: var(--section-pad) 0;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      .section-head {
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 40px;
+      }
+
+      .section-head h2 {
+        font-size: clamp(1.7rem, 3vw, 2.3rem);
+        margin-bottom: 12px;
+      }
+
+      .section-head p {
+        color: var(--muted);
+      }
+
+      .btn {
+        border: 0;
+        border-radius: var(--radius);
+        padding: 12px 20px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        transition: 0.2s transform ease, 0.2s background-color ease, 0.2s box-shadow ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(38, 103, 255, 0.24);
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .btn-secondary {
+        background: #fff;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .btn-secondary:hover {
+        box-shadow: var(--shadow);
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        backdrop-filter: blur(12px);
+        background: rgba(244, 247, 251, 0.86);
+        border-bottom: 1px solid transparent;
+      }
+
+      .site-header.scrolled {
+        border-bottom-color: var(--line);
+      }
+
+      .nav-wrap {
+        min-height: 74px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .logo {
+        font-weight: 800;
+        color: var(--text);
+        text-decoration: none;
+        letter-spacing: 0.02em;
+      }
+
+      .nav-links {
+        display: none;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .nav-links a:hover {
+        color: var(--text);
+      }
+
+      .nav-actions {
+        display: none;
+        gap: 12px;
+      }
+
+      .menu-toggle {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+
+      .menu-toggle span {
+        width: 20px;
+        height: 2px;
+        background: var(--text);
+        position: relative;
+        display: block;
+      }
+
+      .menu-toggle span::before,
+      .menu-toggle span::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 20px;
+        height: 2px;
+        background: var(--text);
+      }
+
+      .menu-toggle span::before {
+        top: -6px;
+      }
+
+      .menu-toggle span::after {
+        top: 6px;
+      }
+
+      .mobile-menu {
+        display: none;
+        padding: 10px 0 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .mobile-menu.open {
+        display: block;
+      }
+
+      .mobile-menu a,
+      .mobile-menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: var(--text);
+        text-decoration: none;
+        font: inherit;
+      }
+
+      .hero {
+        padding-top: 56px;
+      }
+
+      .hero-grid {
+        display: grid;
+        gap: 24px;
+      }
+
+      .hero h1 {
+        font-size: clamp(2rem, 7vw, 3.4rem);
+        line-height: 1.08;
+        margin-bottom: 14px;
+      }
+
+      .hero p {
+        color: var(--muted);
+        max-width: 60ch;
+      }
+
+      .hero-actions {
+        margin-top: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .hero-side {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+
+      .hero-side h2 {
+        margin-bottom: 10px;
+      }
+
+      .hero-side p {
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
+      .cards-3,
+      .cards-6,
+      .pricing-grid,
+      .test-grid,
+      .faq-wrap {
+        display: grid;
+        gap: 18px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h3 {
+        margin-bottom: 8px;
+      }
+
+      .card p {
+        color: var(--muted);
+      }
+
+      .leaderboard {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .table-scroll {
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #f5f9ff;
+      }
+
+      .price {
+        font-size: 2rem;
+        margin: 6px 0 14px;
+      }
+
+      .pricing ul {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 18px;
+        color: var(--muted);
+      }
+
+      .pricing li + li {
+        margin-top: 8px;
+      }
+
+      .featured {
+        border: 2px solid var(--primary);
+        transform: translateY(-6px);
+      }
+
+      .testimonial {
+        font-style: italic;
+        color: #253247;
+        margin-bottom: 14px;
+      }
+
+      .faq-item {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .faq-btn {
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: 0;
+        font: inherit;
+        font-weight: 600;
+        padding: 18px 20px;
+        cursor: pointer;
+      }
+
+      .faq-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+      }
+
+      .faq-content p {
+        padding: 0 20px 18px;
+        color: var(--muted);
+      }
+
+      .final-cta {
+        text-align: center;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        padding: 28px 0 34px;
+        color: var(--muted);
+      }
+
+      .footer-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .footer-brand {
+        font-weight: 800;
+        color: var(--text);
+      }
+
+      .footer a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        color: var(--text);
+      }
+
+      .social a {
+        margin-right: 14px;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity 0.45s ease, transform 0.45s ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: none;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 19, 35, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 150;
+      }
+
+      .modal.open {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(460px, 100%);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 22px;
+      }
+
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .close-btn {
+        border: 0;
+        background: #edf3ff;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      form {
+        margin-top: 14px;
+      }
+
+      label {
+        display: block;
+        font-size: 0.92rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+        margin-bottom: 12px;
+      }
+
+      .error {
+        color: var(--danger);
+        font-size: 0.82rem;
+        min-height: 1.1em;
+        margin-top: -6px;
+        margin-bottom: 10px;
+      }
+
+      .status {
+        color: var(--success);
+        font-size: 0.88rem;
+        min-height: 1.2em;
+        margin: 4px 0 8px;
+      }
+
+      @media (min-width: 760px) {
+        .nav-links,
+        .nav-actions {
+          display: flex;
+        }
+
+        .menu-toggle,
+        .mobile-menu {
+          display: none !important;
+        }
+
+        .hero-grid {
+          grid-template-columns: 1.2fr 0.8fr;
+          align-items: center;
+        }
+
+        .cards-3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .cards-6 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .pricing-grid,
+        .test-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .faq-wrap {
+          max-width: 760px;
+          margin: 0 auto;
+        }
+
+        .footer-grid {
+          grid-template-columns: auto 1fr auto auto;
+          align-items: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header" id="top">
+      <div class="container nav-wrap">
+        <a class="logo" href="index.html">Daily Reset</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#how">How it Works</a>
+          <a href="#features">Features</a>
+          <a href="#leaderboard">Leaderboard</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div class="nav-actions">
+          <button type="button" class="btn btn-secondary" data-open-modal="login">Login</button>
+          <button type="button" class="btn btn-primary" data-open-modal="signup">Sign Up</button>
+        </div>
+        <button class="menu-toggle" id="menuToggle" aria-label="Open navigation" aria-expanded="false" aria-controls="mobileMenu">
+          <span></span>
+        </button>
+      </div>
+      <div class="container mobile-menu" id="mobileMenu">
+        <a href="#how">How it Works</a>
+        <a href="#features">Features</a>
+        <a href="#leaderboard">Leaderboard</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <button type="button" data-open-modal="login">Login</button>
+        <button type="button" data-open-modal="signup">Sign Up</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="reveal">
+            <h1>3 minutes to clear your mind. Feel focused. Feel lighter.</h1>
+            <p>
+              Daily Reset helps you pause, reflect, and return to your day with intention. Build a repeatable mental reset habit for yourself or your team.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#pricing">Get Started</a>
+              <a class="btn btn-secondary" href="#leaderboard">View Leaderboard</a>
+            </div>
+          </div>
+          <aside class="hero-side reveal">
+            <h2>Ready in 3 Minutes</h2>
+            <p>Sign up and jump directly into your guided reset session with reflection prompts and saved intentions.</p>
+            <button class="btn btn-primary" type="button" data-open-modal="signup">Start Free Session</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="how">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>How It Works</h2>
+            <p>Three simple steps to reset attention and return to deep work with less cognitive drag.</p>
+          </div>
+          <div class="cards-3">
+            <article class="card reveal">
+              <h3>1. Sign In</h3>
+              <p>Create your account once and securely continue your daily sessions on any visit.</p>
+            </article>
+            <article class="card reveal">
+              <h3>2. Complete Reset</h3>
+              <p>Run a 3-minute timer with breathing, reflection, and intention prompts.</p>
+            </article>
+            <article class="card reveal">
+              <h3>3. Save Progress</h3>
+              <p>Keep your reflections tied to your account for daily clarity and momentum.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>Features Built for Focus</h2>
+            <p>Everything you need to make mindful resets a repeatable habit.</p>
+          </div>
+          <div class="cards-6">
+            <article class="card reveal"><h3>Guided Reset</h3><p>Calm prompts at each stage of your 3-minute session.</p></article>
+            <article class="card reveal"><h3>Secure Local Auth</h3><p>Simple account flow stored in localStorage.</p></article>
+            <article class="card reveal"><h3>Reflection Capture</h3><p>Write and keep your daily insight and intention.</p></article>
+            <article class="card reveal"><h3>Session Continuity</h3><p>Timer resume state persists on accidental refresh.</p></article>
+            <article class="card reveal"><h3>Team Motivation</h3><p>Leaderboard view keeps consistency visible.</p></article>
+            <article class="card reveal"><h3>Responsive UI</h3><p>Runs cleanly across desktop and mobile.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="leaderboard">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>Leaderboard Preview</h2>
+            <p>See top weekly reset performers and average focus score.</p>
+          </div>
+          <div class="leaderboard reveal">
+            <div class="table-scroll">
+              <table aria-label="Leaderboard preview">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>User</th>
+                    <th>Resets</th>
+                    <th>Focus Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>1</td><td>A. Carter</td><td>35</td><td>98</td></tr>
+                  <tr><td>2</td><td>N. Patel</td><td>33</td><td>96</td></tr>
+                  <tr><td>3</td><td>S. Lee</td><td>31</td><td>95</td></tr>
+                  <tr><td>4</td><td>J. Kim</td><td>30</td><td>94</td></tr>
+                  <tr><td>5</td><td>M. Reed</td><td>28</td><td>92</td></tr>
+                  <tr><td>6</td><td>K. Diaz</td><td>26</td><td>91</td></tr>
+                  <tr><td>7</td><td>R. Shah</td><td>24</td><td>90</td></tr>
+                  <tr><td>8</td><td>T. Wong</td><td>22</td><td>88</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pricing" id="pricing">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>Simple Pricing</h2>
+            <p>Start free and upgrade when you want deeper analytics and team controls.</p>
+          </div>
+          <div class="pricing-grid">
+            <article class="card reveal">
+              <h3>Starter</h3>
+              <p class="price">$0<span>/mo</span></p>
+              <ul>
+                <li>1 user account</li>
+                <li>3-minute daily timer</li>
+                <li>Reflection + intention saves</li>
+              </ul>
+              <button class="btn btn-secondary" type="button" data-open-modal="signup">Choose Starter</button>
+            </article>
+            <article class="card featured reveal">
+              <h3>Pro</h3>
+              <p class="price">$19<span>/mo</span></p>
+              <ul>
+                <li>Unlimited sessions</li>
+                <li>Advanced analytics</li>
+                <li>Weekly leaderboard challenges</li>
+              </ul>
+              <button class="btn btn-primary" type="button" data-open-modal="signup">Choose Pro</button>
+            </article>
+            <article class="card reveal">
+              <h3>Team</h3>
+              <p class="price">$49<span>/mo</span></p>
+              <ul>
+                <li>Up to 25 members</li>
+                <li>Team reports</li>
+                <li>Priority support</li>
+              </ul>
+              <button class="btn btn-secondary" type="button" data-open-modal="signup">Choose Team</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="testimonials">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>What Customers Say</h2>
+            <p>Real outcomes from people who made daily resets part of their workflow.</p>
+          </div>
+          <div class="test-grid">
+            <article class="card reveal"><p class="testimonial">“My afternoons are finally productive. The 3-minute reset is now non-negotiable.”</p><h3>- Lena, Designer</h3></article>
+            <article class="card reveal"><p class="testimonial">“Our team challenge boosted consistency by 41% in six weeks.”</p><h3>- Marcus, Team Lead</h3></article>
+            <article class="card reveal"><p class="testimonial">“Lightweight, effective, and easy to keep doing daily.”</p><h3>- Priya, Founder</h3></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="container">
+          <div class="section-head reveal">
+            <h2>FAQ</h2>
+            <p>Answers to common questions before you get started.</p>
+          </div>
+          <div class="faq-wrap reveal">
+            <article class="faq-item">
+              <button class="faq-btn" type="button">Can I use Daily Reset for free?</button>
+              <div class="faq-content"><p>Yes. The Starter plan is free and includes core reset sessions and saved notes.</p></div>
+            </article>
+            <article class="faq-item">
+              <button class="faq-btn" type="button">Does it work for teams?</button>
+              <div class="faq-content"><p>Yes. Team plan includes multi-user dashboards, rankings, and monthly performance reports.</p></div>
+            </article>
+            <article class="faq-item">
+              <button class="faq-btn" type="button">Do I need to install anything?</button>
+              <div class="faq-content"><p>No installation is required. Everything runs in your browser on desktop and mobile.</p></div>
+            </article>
+            <article class="faq-item">
+              <button class="faq-btn" type="button">Can I cancel anytime?</button>
+              <div class="faq-content"><p>Yes. Paid plans can be canceled at any time from billing settings.</p></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta">
+        <div class="container card reveal">
+          <h2>Take your next reset today.</h2>
+          <p style="margin: 10px 0 18px; color: var(--muted)">Create your account and go straight to your 3-minute session.</p>
+          <button type="button" class="btn btn-primary" data-open-modal="signup">Start Free</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <a class="footer-brand" href="index.html">Daily Reset</a>
+        <p>© 2026 Daily Reset. All rights reserved.</p>
+        <p>
+          <a href="privacy.html">Privacy</a>
+          |
+          <a href="terms.html">Terms</a>
+          |
+          <a href="contact.html">Contact</a>
+        </p>
+        <p class="social">
+          <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href="https://x.com" target="_blank" rel="noopener noreferrer">X</a>
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </p>
+      </div>
+    </footer>
+
+    <div class="modal" id="signupModal" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 id="signupTitle">Sign Up</h2>
+          <button type="button" class="close-btn" data-close-modal>&times;</button>
+        </div>
+        <form id="signupForm" novalidate>
+          <label for="signupEmail">Email</label>
+          <input id="signupEmail" name="email" type="email" required />
+          <p class="error" id="signupEmailError"></p>
+
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" name="password" type="password" required minlength="6" />
+          <p class="error" id="signupPasswordError"></p>
+
+          <label for="signupConfirm">Confirm Password</label>
+          <input id="signupConfirm" name="confirmPassword" type="password" required minlength="6" />
+          <p class="error" id="signupConfirmError"></p>
+
+          <p class="status" id="signupStatus"></p>
+          <button type="submit" class="btn btn-primary" style="width: 100%">Create Account</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2 id="loginTitle">Sign In</h2>
+          <button type="button" class="close-btn" data-close-modal>&times;</button>
+        </div>
+        <form id="loginForm" novalidate>
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" name="email" type="email" required />
+          <p class="error" id="loginEmailError"></p>
+
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" name="password" type="password" required minlength="6" />
+          <p class="error" id="loginPasswordError"></p>
+
+          <p class="status" id="loginStatus"></p>
+          <button type="submit" class="btn btn-primary" style="width: 100%">Sign In</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const USERS_KEY = 'daily-reset-users';
+        const SESSION_KEY = 'daily-reset-session';
+        const FLASH_KEY = 'daily-reset-flash';
+
+        // Sticky nav
+        const header = document.querySelector('.site-header');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const menuToggle = document.getElementById('menuToggle');
+
+        const updateHeaderState = () => {
+          if (window.scrollY > 8) {
+            header.classList.add('scrolled');
+          } else {
+            header.classList.remove('scrolled');
+          }
+        };
+        updateHeaderState();
+        window.addEventListener('scroll', updateHeaderState);
+
+        // Smooth scroll
+        const inPageLinks = document.querySelectorAll('a[href^="#"]');
+        inPageLinks.forEach((link) => {
+          link.addEventListener('click', (event) => {
+            const id = link.getAttribute('href');
+            const target = id ? document.querySelector(id) : null;
+            if (!target) return;
+            event.preventDefault();
+            mobileMenu.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        });
+
+        // Mobile menu toggle
+        menuToggle.addEventListener('click', () => {
+          const isOpen = mobileMenu.classList.toggle('open');
+          menuToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        // FAQ accordion
+        const faqItems = Array.from(document.querySelectorAll('.faq-item'));
+        faqItems.forEach((item) => {
+          const btn = item.querySelector('.faq-btn');
+          const content = item.querySelector('.faq-content');
+          btn.addEventListener('click', () => {
+            faqItems.forEach((other) => {
+              const otherContent = other.querySelector('.faq-content');
+              if (other !== item) {
+                otherContent.style.maxHeight = '0px';
+              }
+            });
+            const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+            content.style.maxHeight = isOpen ? '0px' : `${content.scrollHeight}px`;
+          });
+        });
+
+        // Modal logic
+        const signupModal = document.getElementById('signupModal');
+        const loginModal = document.getElementById('loginModal');
+        const openButtons = document.querySelectorAll('[data-open-modal]');
+        const closeButtons = document.querySelectorAll('[data-close-modal]');
+
+        const openModal = (type) => {
+          const targetModal = type === 'login' ? loginModal : signupModal;
+          targetModal.classList.add('open');
+          document.body.style.overflow = 'hidden';
+        };
+
+        const closeModals = () => {
+          signupModal.classList.remove('open');
+          loginModal.classList.remove('open');
+          document.body.style.overflow = '';
+        };
+
+        openButtons.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const type = btn.getAttribute('data-open-modal');
+            openModal(type);
+            mobileMenu.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+          });
+        });
+
+        closeButtons.forEach((btn) => {
+          btn.addEventListener('click', closeModals);
+        });
+
+        [signupModal, loginModal].forEach((modal) => {
+          modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+              closeModals();
+            }
+          });
+        });
+
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            closeModals();
+          }
+        });
+
+        // Auth helpers
+        const getUsers = () => {
+          try {
+            return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+          } catch {
+            return {};
+          }
+        };
+
+        const setUsers = (users) => {
+          localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        };
+
+        const setSession = (email) => {
+          localStorage.setItem(SESSION_KEY, email);
+        };
+
+        const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+        const showError = (inputId, message) => {
+          const errorEl = document.getElementById(`${inputId}Error`);
+          if (errorEl) errorEl.textContent = message;
+        };
+
+        const clearFormState = (formId, statusId) => {
+          document.querySelectorAll(`#${formId} .error`).forEach((el) => {
+            el.textContent = '';
+          });
+          const status = document.getElementById(statusId);
+          if (status) status.textContent = '';
+        };
+
+        // Sign up flow
+        const signupForm = document.getElementById('signupForm');
+        signupForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          clearFormState('signupForm', 'signupStatus');
+
+          const emailEl = document.getElementById('signupEmail');
+          const passwordEl = document.getElementById('signupPassword');
+          const confirmEl = document.getElementById('signupConfirm');
+          const statusEl = document.getElementById('signupStatus');
+
+          const email = emailEl.value.trim().toLowerCase();
+          const password = passwordEl.value;
+          const confirmPassword = confirmEl.value;
+          let valid = true;
+
+          if (!email || !validateEmail(email)) {
+            showError('signupEmail', 'Enter a valid email address.');
+            valid = false;
+          }
+          if (!password || password.length < 6) {
+            showError('signupPassword', 'Password must be at least 6 characters.');
+            valid = false;
+          }
+          if (!confirmPassword || confirmPassword.length < 6) {
+            showError('signupConfirm', 'Confirm your password.');
+            valid = false;
+          }
+          if (password && confirmPassword && password !== confirmPassword) {
+            showError('signupConfirm', 'Passwords do not match.');
+            valid = false;
+          }
+          if (!valid) return;
+
+          const users = getUsers();
+          if (users[email]) {
+            showError('signupEmail', 'An account with this email already exists.');
+            return;
+          }
+
+          users[email] = {
+            email,
+            password,
+            createdAt: Date.now(),
+          };
+          setUsers(users);
+          setSession(email);
+          localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+          statusEl.textContent = 'Sign up successful. Redirecting...';
+
+          setTimeout(() => {
+            window.location.href = 'timer.html';
+          }, 900);
+        });
+
+        // Sign in flow
+        const loginForm = document.getElementById('loginForm');
+        loginForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          clearFormState('loginForm', 'loginStatus');
+
+          const emailEl = document.getElementById('loginEmail');
+          const passwordEl = document.getElementById('loginPassword');
+          const statusEl = document.getElementById('loginStatus');
+
+          const email = emailEl.value.trim().toLowerCase();
+          const password = passwordEl.value;
+          let valid = true;
+
+          if (!email || !validateEmail(email)) {
+            showError('loginEmail', 'Enter a valid email address.');
+            valid = false;
+          }
+          if (!password || password.length < 6) {
+            showError('loginPassword', 'Password must be at least 6 characters.');
+            valid = false;
+          }
+          if (!valid) return;
+
+          const users = getUsers();
+          const user = users[email];
+          if (!user || user.password !== password) {
+            showError('loginPassword', 'Incorrect email or password.');
+            return;
+          }
+
+          setSession(email);
+          localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+          statusEl.textContent = 'Sign in successful. Redirecting...';
+
+          setTimeout(() => {
+            window.location.href = 'timer.html';
+          }, 900);
+        });
+
+        // Scroll animations
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.15 }
+        );
+
+        document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+      })();
+    </script>
+  </body>
+</html>
