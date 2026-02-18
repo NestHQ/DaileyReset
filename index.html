@@ -837,6 +837,31 @@
         const CHECKOUT_PLAN_KEY = 'daily-reset-last-checkout-plan';
         const USERS_STORAGE_KEY = 'users';
         const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
+        const safeStorage = {
+          get(key) {
+            try {
+              return localStorage.getItem(key);
+            } catch {
+              return null;
+            }
+          },
+          set(key, value) {
+            try {
+              localStorage.setItem(key, value);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          remove(key) {
+            try {
+              localStorage.removeItem(key);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+        };
 
         // Sticky nav
         const header = document.querySelector('.site-header');
@@ -921,7 +946,7 @@
 
         document.querySelectorAll('[data-checkout-plan]').forEach((link) => {
           link.addEventListener('click', () => {
-            localStorage.setItem(CHECKOUT_PLAN_KEY, link.dataset.checkoutPlan);
+            safeStorage.set(CHECKOUT_PLAN_KEY, link.dataset.checkoutPlan);
           });
         });
 
@@ -939,29 +964,29 @@
         };
 
         const initUsersStorage = () => {
-          const existing = localStorage.getItem(USERS_STORAGE_KEY);
+          const existing = safeStorage.get(USERS_STORAGE_KEY);
           if (!existing) {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+            safeStorage.set(USERS_STORAGE_KEY, JSON.stringify([]));
           }
         };
 
         const getLocalUsers = () => {
           try {
             initUsersStorage();
-            const parsed = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY));
+            const parsed = JSON.parse(safeStorage.get(USERS_STORAGE_KEY) || '[]');
             if (!Array.isArray(parsed)) {
-              localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+              safeStorage.set(USERS_STORAGE_KEY, JSON.stringify([]));
               return [];
             }
             return parsed;
           } catch {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+            safeStorage.set(USERS_STORAGE_KEY, JSON.stringify([]));
             return [];
           }
         };
 
         const saveLocalUsers = (users) => {
-          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+          safeStorage.set(USERS_STORAGE_KEY, JSON.stringify(users));
         };
 
         const upsertLocalUser = (email, userId) => {
@@ -1108,8 +1133,8 @@
             const idx = users.findIndex((user) => (user.email || '').toLowerCase() === email);
             users[idx] = { ...users[idx], password };
             saveLocalUsers(users);
-            localStorage.setItem(LOCAL_SESSION_KEY, email);
-            localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+            safeStorage.set(LOCAL_SESSION_KEY, email);
+            safeStorage.set(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
             statusEl.textContent = 'Sign up successful. Redirecting...';
             setTimeout(() => {
               window.location.href = 'timer.html';
@@ -1145,7 +1170,7 @@
             }
 
             if (hasSession) {
-              localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+              safeStorage.set(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
               statusEl.textContent = 'Sign up successful. Redirecting...';
               setTimeout(() => {
                 window.location.href = 'timer.html';
@@ -1158,6 +1183,7 @@
             statusEl.textContent = '';
           }
         });
+        window.__dailyResetSignupBound = true;
 
         const loginForm = document.getElementById('loginForm');
         loginForm.addEventListener('submit', async (event) => {
@@ -1186,8 +1212,8 @@
               showError('loginPassword', 'Incorrect email or password.');
               return;
             }
-            localStorage.setItem(LOCAL_SESSION_KEY, email);
-            localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+            safeStorage.set(LOCAL_SESSION_KEY, email);
+            safeStorage.set(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
             statusEl.textContent = 'Sign in successful. Redirecting...';
             setTimeout(() => {
               window.location.href = 'timer.html';
@@ -1201,7 +1227,7 @@
               showError('loginPassword', parseAuthError(error, 'Unable to sign in.'));
               return;
             }
-            localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+            safeStorage.set(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
             statusEl.textContent = 'Sign in successful. Redirecting...';
             setTimeout(() => {
               window.location.href = 'timer.html';
@@ -1211,6 +1237,7 @@
             statusEl.textContent = '';
           }
         });
+        window.__dailyResetLoginBound = true;
 
         // Scroll animations
         const observer = new IntersectionObserver(
@@ -1225,6 +1252,126 @@
           { threshold: 0.15 }
         );
         document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+      })();
+    </script>
+    <script>
+      (() => {
+        if (window.__dailyResetSignupBound && window.__dailyResetLoginBound) return;
+
+        const USERS_STORAGE_KEY = 'users';
+        const LOCAL_SESSION_KEY = 'daily-reset-local-session-email';
+        const FLASH_KEY = 'daily-reset-flash';
+        const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+        const getUsers = () => {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY) || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        };
+        const setUsers = (users) => {
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+          } catch {}
+        };
+
+        const signupForm = document.getElementById('signupForm');
+        if (signupForm && !window.__dailyResetSignupBound) {
+          signupForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const emailEl = document.getElementById('signupEmail');
+            const passwordEl = document.getElementById('signupPassword');
+            const confirmEl = document.getElementById('signupConfirm');
+            const statusEl = document.getElementById('signupStatus');
+            const emailErrorEl = document.getElementById('signupEmailError');
+            const passErrorEl = document.getElementById('signupPasswordError');
+            const confirmErrorEl = document.getElementById('signupConfirmError');
+
+            emailErrorEl.textContent = '';
+            passErrorEl.textContent = '';
+            confirmErrorEl.textContent = '';
+            statusEl.textContent = '';
+
+            const email = emailEl.value.trim().toLowerCase();
+            const password = passwordEl.value;
+            const confirmPassword = confirmEl.value;
+
+            if (!validateEmail(email)) {
+              emailErrorEl.textContent = 'Enter a valid email address.';
+              return;
+            }
+            if (!password || password.length < 6) {
+              passErrorEl.textContent = 'Password must be at least 6 characters.';
+              return;
+            }
+            if (password !== confirmPassword) {
+              confirmErrorEl.textContent = 'Passwords do not match.';
+              return;
+            }
+
+            const users = getUsers();
+            if (users.some((user) => (user.email || '').toLowerCase() === email)) {
+              emailErrorEl.textContent = 'This email already has an account. Please sign in.';
+              return;
+            }
+
+            users.push({ email, password, userId: `local-${Date.now()}`, createdAt: Date.now() });
+            setUsers(users);
+            try {
+              localStorage.setItem(LOCAL_SESSION_KEY, email);
+              localStorage.setItem(FLASH_KEY, 'Sign up successful. Redirecting to your 3-minute reset...');
+            } catch {}
+            statusEl.textContent = 'Sign up successful. Redirecting...';
+            setTimeout(() => {
+              window.location.href = 'timer.html';
+            }, 700);
+          });
+        }
+
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm && !window.__dailyResetLoginBound) {
+          loginForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const emailEl = document.getElementById('loginEmail');
+            const passwordEl = document.getElementById('loginPassword');
+            const statusEl = document.getElementById('loginStatus');
+            const emailErrorEl = document.getElementById('loginEmailError');
+            const passErrorEl = document.getElementById('loginPasswordError');
+
+            emailErrorEl.textContent = '';
+            passErrorEl.textContent = '';
+            statusEl.textContent = '';
+
+            const email = emailEl.value.trim().toLowerCase();
+            const password = passwordEl.value;
+            if (!validateEmail(email)) {
+              emailErrorEl.textContent = 'Enter a valid email address.';
+              return;
+            }
+            if (!password) {
+              passErrorEl.textContent = 'Enter your password.';
+              return;
+            }
+
+            const users = getUsers();
+            const user = users.find((u) => (u.email || '').toLowerCase() === email);
+            if (!user || user.password !== password) {
+              passErrorEl.textContent = 'Incorrect email or password.';
+              return;
+            }
+
+            try {
+              localStorage.setItem(LOCAL_SESSION_KEY, email);
+              localStorage.setItem(FLASH_KEY, 'Welcome back. Redirecting to your 3-minute reset...');
+            } catch {}
+            statusEl.textContent = 'Sign in successful. Redirecting...';
+            setTimeout(() => {
+              window.location.href = 'timer.html';
+            }, 700);
+          });
+        }
       })();
     </script>
   </body>
